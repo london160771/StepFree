@@ -40,7 +40,15 @@ export function useStepFree() {
   const run = useRef(0);
 
   useEffect(() => {
-    api.network().then(setNetwork, (e: Error) => setLoadError(e.message));
+    const load = () => api.network().then(setNetwork, (e: Error) => setLoadError(e.message));
+    void load();
+    // The installed app can open offline; load the network once a connection returns.
+    const onOnline = () => {
+      setLoadError(null);
+      void load();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   }, []);
 
   const clearRoute = useCallback(() => {

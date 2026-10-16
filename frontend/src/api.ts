@@ -82,7 +82,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: { 'Content-Type': 'application/json', ...init?.headers },
     });
   } catch {
-    throw new Error('StepFree could not reach its route service. Check your connection and try again.');
+    throw new Error(
+      navigator.onLine
+        ? 'StepFree could not reach its route service. Check your connection and try again.'
+        : 'You’re offline. StepFree needs an internet connection to find routes.',
+    );
   }
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error ?? 'Something went wrong while finding a route.');

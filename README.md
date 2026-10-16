@@ -22,10 +22,14 @@ The lift is derived from TfL data, not chosen by hand. In TfL’s topology, Lift
 
 Live Mode asks for your location only after you choose it and tap **Allow Location**. It places the wheelchair-user figure on the map, starts from the nearest supported station with step-free street access, and routes with current TfL lift disruptions. If location is denied, Live Mode doesn’t start and Demo Mode stays available. Outside London it shows “Live Mode is currently available in London only.” Live Mode needs an internet connection for current TfL data.
 
+### Install as an app
+
+StepFree is an installable PWA. The **Install** page has short iPhone (Safari) and Android (Chrome) steps for adding it to the home screen. Once installed, the app shell opens even without a connection. Finding a route needs internet, and Live Mode needs internet for current TfL lift data.
+
 ## Project layout
 
 ```text
-frontend/   React + Vite + TypeScript + Tailwind CSS + Framer Motion (SVG map)
+frontend/   React + Vite + TypeScript + Tailwind CSS + Framer Motion (SVG map), PWA via vite-plugin-pwa
 backend/    Node.js + Express + TypeScript API, FalkorDB routing, TfL integration
   data/network.json         seven-station graph built from TfL data (committed)
   scripts/build-network.ts  rebuilds network.json from TfL topology, timetable and StopPoint APIs
@@ -61,6 +65,8 @@ Requirements: Node.js 20+ and a running FalkorDB on `localhost:6379`.
    ```
 
 To rebuild the graph data from TfL’s current published files, run `npm run topology` in `backend`.
+
+The service worker only runs in a production build. To try installing locally, run `npm run build` and `npm run preview` in `frontend`, set `CORS_ORIGIN=http://localhost:4173` in `backend/.env`, and open http://localhost:4173. PWA icons are generated from `frontend/public/icon.svg` with `npm run icons`.
 
 ## Environment variables
 

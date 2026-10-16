@@ -5,11 +5,13 @@ import { RoutePanel } from './components/RoutePanel';
 import { TransitMap } from './map/TransitMap';
 import { useMapFrame } from './map/useMapFrame';
 import { About } from './pages/About';
+import { InstallGuide } from './pages/InstallGuide';
 import { useStepFree } from './useStepFree';
 
-type Page = 'map' | 'about';
+type Page = 'map' | 'install' | 'about';
 
 function pageFromHash(): Page {
+  if (window.location.hash === '#/install') return 'install';
   return window.location.hash === '#/about' ? 'about' : 'map';
 }
 
@@ -31,12 +33,15 @@ export default function App() {
           <a href="#/" className={`nav-link ${page === 'map' ? 'nav-link-active' : ''}`} aria-current={page === 'map' ? 'page' : undefined}>
             Map
           </a>
+          <a href="#/install" className={`nav-link ${page === 'install' ? 'nav-link-active' : ''}`} aria-current={page === 'install' ? 'page' : undefined}>
+            Install
+          </a>
           <a href="#/about" className={`nav-link ${page === 'about' ? 'nav-link-active' : ''}`} aria-current={page === 'about' ? 'page' : undefined}>
             About
           </a>
         </nav>
       </header>
-      {page === 'map' ? <MapHome /> : <About />}
+      {page === 'map' ? <MapHome /> : page === 'install' ? <InstallGuide /> : <About />}
     </div>
   );
 }
