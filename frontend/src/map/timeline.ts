@@ -3,7 +3,7 @@
 /** Intro timeline (milliseconds from first paint unless noted). */
 export const INTRO = {
   /** Photo + brand phase; the map reveal starts after this. */
-  photoMs: 3000,
+  photoMs: 7000,
   /** Overlay removed this long after the reveal starts (by timer, never by animation). */
   overlayMs: 1800,
   /** Skip button appears after this. */

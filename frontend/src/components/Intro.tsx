@@ -36,7 +36,7 @@ export function Intro({ leaving, onSkip }: { leaving: boolean; onSkip: () => voi
           style={{ opacity: photoReady ? 1 : 0, transition: 'opacity 0.9s ease-out' }}
           initial={{ scale: 1.14, x: '1.5%' }}
           animate={leaving ? { scale: 1.02, x: '0%' } : { scale: 1.06, x: '0%' }}
-          transition={{ duration: leaving ? 1.5 : 3.4, ease: EASE_OUT }}
+          transition={{ duration: leaving ? 1.5 : 7.4, ease: EASE_OUT }}
         >
           <source media="(max-width: 767px)" srcSet="/intro/westminster-dusk-720.webp" />
           <img
