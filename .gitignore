@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.log
+.DS_Store
+
+# Environment files: never commit real values
+.env
+.env.*
+!.env.example
+
+# Raw TfL downloads (regenerate with npm run topology)
+backend/data/raw/
