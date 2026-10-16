@@ -1,20 +1,25 @@
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import { useEffect, useMemo } from 'react';
 import type { GraphEdge, LineId, Route, Station } from '../api';
-import { PARKS, RIVER_POINTS, cityGrid, isoFaces } from './city';
+import { PARKS, RIVER_POINTS, cityGrid, isoFaces, shadowPath, type Block } from './city';
 import {
   LABEL_ANCHORS,
   LIFT_OFFSETS,
   LINE_COLORS,
   STATION_POSITIONS,
+  journeySeconds,
   pointAt,
+  routeDrawSeconds,
   routePoints,
   stationPoint,
   toPath,
   type Point,
 } from './layout';
+import { REVEAL } from './timeline';
 
 export const ROUTE_COLOR = '#111827';
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+const EASE_IN_OUT = [0.65, 0, 0.35, 1] as const;
 
 export interface MapFrame {
   x: number;
@@ -36,17 +41,33 @@ interface Props {
   userPoint: Point | null;
   /** Changing this replays the figure's journey along the route. */
   journeyKey: string;
+  /** Play the opening city/network reveal. */
+  intro: boolean;
 }
 
-export function TransitMap({ frame, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey }: Props) {
+export function TransitMap({ frame, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey, intro }: Props) {
   const reduceMotion = useReducedMotion() ?? false;
+  const reveal = intro && !reduceMotion;
   const city = useMemo(() => cityGrid(edges, frame), [edges, frame]);
+  const layers = useMemo(() => {
+    const far = city.blocks.filter((b) => b.far);
+    const near = city.blocks.filter((b) => !b.far);
+    return { far, near, shadows: shadowPath(city.blocks) };
+  }, [city]);
   const lines = useMemo(() => lineSegments(edges), [edges]);
   const routeLifts = useMemo(() => liftStations(route), [route]);
   const points = route ? routePoints(route) : null;
+  const drawSeconds = points ? routeDrawSeconds(points) : 0;
   const journey = points && userPoint ? [userPoint, ...points] : points;
   const stepFree = new Map(stations.map((s) => [s.id, s.stepFreeStreetAccess]));
   const names = new Map(stations.map((s) => [s.id, s.name]));
+  const stationOrder = Object.keys(STATION_POSITIONS);
+
+  /** Entrance props for a layer: hidden then shown at `delay`, or nothing when not revealing. */
+  const enter = (delay: number, from: Record<string, number> = {}, duration = 0.8) =>
+    reveal
+      ? { initial: { opacity: 0, ...from }, animate: { opacity: 1, x: 0, y: 0 }, transition: { delay, duration, ease: EASE_OUT } }
+      : { initial: false as const };
 
   return (
     <svg
@@ -63,84 +84,113 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
         <filter id="soft-shadow" x="-50%" y="-50%" width="200%" height="200%">
           <feDropShadow dx="0" dy="1.5" stdDeviation="1.6" floodColor="#0f172a" floodOpacity="0.18" />
         </filter>
+        {/* Lifts the network above the city for gentle depth. */}
+        <filter id="network-lift" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="2.5" stdDeviation="2.2" floodColor="#0f172a" floodOpacity="0.16" />
+        </filter>
+        <radialGradient id="vignette" cx="50%" cy="45%" r="75%">
+          <stop offset="60%" stopColor="#f3f1ec" stopOpacity="0" />
+          <stop offset="100%" stopColor="#e9e6df" stopOpacity="0.85" />
+        </radialGradient>
       </defs>
 
       <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="var(--map-ground)" />
 
-      {/* City context */}
-      <g aria-hidden>
+      {/* City context: streets, water, parks, then two depth layers of buildings. */}
+      <motion.g aria-hidden {...enter(REVEAL.roads, {}, 0.9)}>
         {city.roads.map((road, i) => (
           <line key={i} x1={road.a.x} y1={road.a.y} x2={road.b.x} y2={road.b.y} stroke="var(--map-road)" strokeWidth={9} />
         ))}
-      </g>
-      <polyline
-        points={RIVER_POINTS.map((p) => `${p.x},${p.y}`).join(' ')}
-        fill="none"
-        stroke="var(--map-water)"
-        strokeWidth={30}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {PARKS.map((p) => (
-        <rect key={`${p.x}-${p.y}`} x={p.x} y={p.y} width={p.w} height={p.h} rx={p.r} fill="var(--map-park)" />
-      ))}
-      <g aria-hidden>
-        {city.blocks.map((block, i) => {
-          const faces = isoFaces(block);
-          const shade = block.tone > 0.66 ? 'b' : block.tone > 0.33 ? 'a' : 'c';
-          return (
-            <g key={i}>
-              <polygon points={faces.left} fill={`var(--block-${shade}-left)`} />
-              <polygon points={faces.right} fill={`var(--block-${shade}-right)`} />
-              <polygon points={faces.top} fill={`var(--block-${shade}-top)`} />
-            </g>
-          );
-        })}
-      </g>
+        <polyline
+          points={RIVER_POINTS.map((p) => `${p.x},${p.y}`).join(' ')}
+          fill="none"
+          stroke="var(--map-water)"
+          strokeWidth={30}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {PARKS.map((p) => (
+          <rect key={`${p.x}-${p.y}`} x={p.x} y={p.y} width={p.w} height={p.h} rx={p.r} fill="var(--map-park)" />
+        ))}
+        <path d={layers.shadows} fill="#1e293b" opacity={0.055} />
+      </motion.g>
+      <motion.g aria-hidden opacity={0.72} {...enter(REVEAL.farBlocks, { y: 10 }, 1.1)}>
+        <Blocks blocks={layers.far} />
+      </motion.g>
+      <motion.g aria-hidden {...enter(REVEAL.nearBlocks, { y: 22 }, 1.1)}>
+        <Blocks blocks={layers.near} />
+      </motion.g>
+      <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="url(#vignette)" pointerEvents="none" />
 
-      {/* Network from FalkorDB */}
-      <g aria-hidden>
-        {lines.map((segment) => (
-          <line
-            key={segment.key}
-            x1={segment.a.x}
-            y1={segment.a.y}
-            x2={segment.b.x}
-            y2={segment.b.y}
-            stroke={LINE_COLORS[segment.line]}
-            strokeWidth={6}
-            strokeLinecap="round"
-            opacity={route ? 0.55 : 0.9}
-          />
+      {/* Network from FalkorDB, drawn in on first load. */}
+      <g aria-hidden filter="url(#network-lift)">
+        {lines.map((segment, i) => (
+          <motion.g key={segment.key} animate={{ opacity: route ? 0.5 : 1 }} transition={{ duration: 0.6 }}>
+            <motion.line
+              x1={segment.a.x}
+              y1={segment.a.y}
+              x2={segment.b.x}
+              y2={segment.b.y}
+              stroke="#ffffff"
+              strokeWidth={10}
+              strokeLinecap="round"
+              initial={reveal ? { pathLength: 0, opacity: 0 } : false}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{
+                delay: REVEAL.network + i * 0.08,
+                duration: 0.7,
+                ease: EASE_IN_OUT,
+                // Hide the round caps until drawing starts.
+                opacity: { delay: REVEAL.network + i * 0.08, duration: 0.15 },
+              }}
+            />
+            <motion.line
+              x1={segment.a.x}
+              y1={segment.a.y}
+              x2={segment.b.x}
+              y2={segment.b.y}
+              stroke={LINE_COLORS[segment.line]}
+              strokeWidth={6}
+              strokeLinecap="round"
+              initial={reveal ? { pathLength: 0, opacity: 0 } : false}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{
+                delay: REVEAL.network + i * 0.08,
+                duration: 0.7,
+                ease: EASE_IN_OUT,
+                // Hide the round caps until drawing starts.
+                opacity: { delay: REVEAL.network + i * 0.08, duration: 0.15 },
+              }}
+            />
+          </motion.g>
         ))}
       </g>
 
-      {!reduceMotion && <Trains lines={lines} />}
+      {!reduceMotion && <Trains lines={lines} dimmed={route !== null} startDelay={reveal ? REVEAL.trains : 0} />}
 
-      {/* Old route fading out */}
+      {/* Old route: fades to a quiet grey dashed trace so the change stays readable. */}
       <AnimatePresence>
         {fadingRoute && (
           <motion.path
             key={`fade-${fadingRoute.stations.join('-')}`}
             d={toPath(routePoints(fadingRoute))}
             fill="none"
-            stroke={ROUTE_COLOR}
-            strokeWidth={7}
+            strokeWidth={6}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeDasharray="2 12"
-            initial={{ opacity: 0.85 }}
-            animate={{ opacity: 0.22 }}
+            strokeDasharray="2 11"
+            initial={{ opacity: 0.9, stroke: ROUTE_COLOR }}
+            animate={{ opacity: 0.35, stroke: '#64748b' }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.9 }}
+            transition={{ duration: reduceMotion ? 0 : 1.2, ease: EASE_OUT }}
           />
         )}
       </AnimatePresence>
 
-      {/* Current step-free route */}
-      <AnimatePresence mode="wait">
+      {/* Current step-free route from FalkorDB */}
+      <AnimatePresence>
         {points && (
-          <motion.g key={`route-${journeyKey}`} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+          <motion.g key={`route-${journeyKey}`} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}>
             <motion.path
               d={toPath(points)}
               fill="none"
@@ -148,9 +198,10 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
               strokeWidth={15}
               strokeLinecap="round"
               strokeLinejoin="round"
+              filter="url(#network-lift)"
               initial={{ pathLength: reduceMotion ? 1 : 0 }}
               animate={{ pathLength: 1 }}
-              transition={{ duration: reduceMotion ? 0 : 1.1, ease: 'easeInOut' }}
+              transition={{ duration: reduceMotion ? 0 : drawSeconds, ease: EASE_IN_OUT }}
             />
             <motion.path
               d={toPath(points)}
@@ -161,21 +212,40 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
               strokeLinejoin="round"
               initial={{ pathLength: reduceMotion ? 1 : 0 }}
               animate={{ pathLength: 1 }}
-              transition={{ duration: reduceMotion ? 0 : 1.1, ease: 'easeInOut' }}
+              transition={{ duration: reduceMotion ? 0 : drawSeconds, ease: EASE_IN_OUT }}
             />
+            {!reduceMotion && (
+              // Slow flowing dashes show the direction of travel once the line is drawn.
+              <motion.path
+                d={toPath(points)}
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="1 13"
+                initial={{ opacity: 0, strokeDashoffset: 0 }}
+                animate={{ opacity: 0.75, strokeDashoffset: -28 }}
+                transition={{
+                  opacity: { delay: drawSeconds, duration: 0.5 },
+                  strokeDashoffset: { delay: drawSeconds, duration: 1.8, ease: 'linear', repeat: Infinity },
+                }}
+              />
+            )}
           </motion.g>
         )}
       </AnimatePresence>
 
       {/* Stations */}
-      {Object.entries(STATION_POSITIONS).map(([id, p]) => {
+      {stationOrder.map((id, i) => {
+        const p = STATION_POSITIONS[id];
         const onRoute = route?.stations.includes(id) ?? false;
         const interchange = route?.legs.some((l) => l.type === 'transfer' && l.kind === 'interchange' && l.stationId === id);
         const isEnd = route ? id === route.stations[0] || id === route.stations.at(-1) : false;
         const accessible = stepFree.get(id) ?? true;
         const label = LABEL_ANCHORS[id];
         return (
-          <g key={id}>
+          <motion.g key={id} {...enter(REVEAL.stations + i * 0.06, { y: -6 }, 0.5)}>
             {outageStationIds.includes(id) && <OutagePulse at={p} reduceMotion={reduceMotion} />}
             <circle
               cx={p.x}
@@ -201,23 +271,41 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
                 not step-free · pass through
               </text>
             )}
-          </g>
+          </motion.g>
         );
       })}
 
-      {/* Lift icons on the route, and the unavailable lift */}
+      {/* Lift icons appear once the route line has reached them; the unavailable lift shows at once. */}
       {[...routeLifts].filter((id) => !outageStationIds.includes(id)).map((id) => (
-        <LiftIcon key={id} at={liftSpot(id)} state="ok" />
+        <LiftIcon key={`${journeyKey}-${id}`} at={liftSpot(id)} state="ok" delay={reduceMotion ? 0 : drawSeconds * 0.8} />
       ))}
       {outageStationIds.map((id) => (
-        <LiftIcon key={`out-${id}`} at={liftSpot(id)} state="unavailable" />
+        <LiftIcon key={`out-${id}`} at={liftSpot(id)} state="unavailable" delay={0} />
       ))}
 
       {journey && (
-        <JourneyFigure key={`figure-${journeyKey}`} points={journey} reduceMotion={reduceMotion} />
+        <JourneyFigure key={`figure-${journeyKey}`} points={journey} reduceMotion={reduceMotion} startDelay={drawSeconds + 0.3} />
       )}
-      {!journey && userPoint && <JourneyFigure key="figure-user" points={[userPoint]} reduceMotion={reduceMotion} />}
+      {!journey && userPoint && <JourneyFigure key="figure-user" points={[userPoint]} reduceMotion={reduceMotion} startDelay={0} />}
     </svg>
+  );
+}
+
+function Blocks({ blocks }: { blocks: Block[] }) {
+  return (
+    <>
+      {blocks.map((block, i) => {
+        const faces = isoFaces(block);
+        const shade = block.tone > 0.66 ? 'b' : block.tone > 0.33 ? 'a' : 'c';
+        return (
+          <g key={i}>
+            <polygon points={faces.left} fill={`var(--block-${shade}-left)`} />
+            <polygon points={faces.right} fill={`var(--block-${shade}-right)`} />
+            <polygon points={faces.top} fill={`var(--block-${shade}-top)`} />
+          </g>
+        );
+      })}
+    </>
   );
 }
 
@@ -251,10 +339,10 @@ function liftSpot(stationId: string): Point {
   return { x: p.x + offset.x, y: p.y + offset.y };
 }
 
-function LiftIcon({ at, state }: { at: Point; state: 'ok' | 'unavailable' }) {
+function LiftIcon({ at, state, delay }: { at: Point; state: 'ok' | 'unavailable'; delay: number }) {
   const danger = state === 'unavailable';
   return (
-    <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
+    <motion.g initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.4, ease: EASE_OUT }}>
       <title>{danger ? 'Lift unavailable' : 'Lift on this route'}</title>
       <rect
         x={at.x - 8}
@@ -284,17 +372,17 @@ function OutagePulse({ at, reduceMotion }: { at: Point; reduceMotion: boolean })
           cy={at.y}
           fill="none"
           stroke="var(--danger)"
-          strokeWidth={3}
-          initial={{ r: 12, opacity: 0.9 }}
-          animate={{ r: 32, opacity: 0 }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+          strokeWidth={2.5}
+          initial={{ r: 12, opacity: 0.8 }}
+          animate={{ r: 30, opacity: 0 }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
         />
       )}
     </>
   );
 }
 
-function Trains({ lines }: { lines: Segment[] }) {
+function Trains({ lines, dimmed, startDelay }: { lines: Segment[]; dimmed: boolean; startDelay: number }) {
   const byLine = new Map<LineId, Point[]>();
   for (const seg of lines) {
     const pts = byLine.get(seg.line);
@@ -305,11 +393,12 @@ function Trains({ lines }: { lines: Segment[] }) {
     else if (pts[0] === seg.a) pts.unshift(seg.b);
   }
   return (
-    <g aria-hidden>
+    // Trains step back while a route is shown so they never compete with it.
+    <motion.g aria-hidden initial={{ opacity: 0 }} animate={{ opacity: dimmed ? 0.35 : 0.9 }} transition={{ delay: dimmed ? 0 : startDelay, duration: 0.8 }}>
       {[...byLine.entries()].map(([line, pts], i) => (
-        <Train key={line} points={pts} color={LINE_COLORS[line]} duration={10 + pts.length * 3} delay={i * 1.7} />
+        <Train key={line} points={pts} color={LINE_COLORS[line]} duration={12 + pts.length * 3} delay={startDelay + i * 1.7} />
       ))}
-    </g>
+    </motion.g>
   );
 }
 
@@ -333,17 +422,19 @@ function Train({ points, color, duration, delay }: { points: Point[]; color: str
   );
 }
 
-function JourneyFigure({ points, reduceMotion }: { points: Point[]; reduceMotion: boolean }) {
-  const t = useMotionValue(reduceMotion || points.length === 1 ? 1 : 0);
+function JourneyFigure({ points, reduceMotion, startDelay }: { points: Point[]; reduceMotion: boolean; startDelay: number }) {
+  const still = reduceMotion || points.length === 1;
+  const t = useMotionValue(still ? 1 : 0);
+  const duration = journeySeconds(points);
   useEffect(() => {
-    if (reduceMotion || points.length === 1) return;
-    const controls = animate(t, 1, { duration: 2.2 + points.length * 0.6, delay: 1.1, ease: 'easeInOut' });
+    if (still) return;
+    const controls = animate(t, 1, { duration, delay: startDelay, ease: 'easeInOut' });
     return () => controls.stop();
-  }, [t, points.length, reduceMotion]);
+  }, [t, duration, still, startDelay]);
   const x = useTransform(t, (v) => pointAt(points, v).x);
   const y = useTransform(t, (v) => pointAt(points, v).y - 20);
   return (
-    <motion.g style={{ x, y }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+    <motion.g style={{ x, y }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: still ? 0 : startDelay * 0.6 }}>
       <title>Wheelchair user</title>
       <WheelchairUser />
     </motion.g>

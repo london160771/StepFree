@@ -27,6 +27,8 @@ export interface Block {
   d: number;
   h: number;
   tone: number;
+  /** Background blocks sit farther from the network and recede (lighter, less parallax). */
+  far: boolean;
 }
 
 function segmentDistance(p: Point, a: Point, b: Point): number {
@@ -50,6 +52,7 @@ const ORIGIN = { x: 200, y: 300 };
 const AXIS_U = { x: 22.5, y: 13 };
 const AXIS_V = { x: -22.5, y: 13 };
 const ROAD_EVERY = 4;
+const NETWORK_CENTRE = { x: 210, y: 300 };
 
 const lattice = (u: number, v: number): Point => ({
   x: ORIGIN.x + u * AXIS_U.x + v * AXIS_V.x,
@@ -95,7 +98,8 @@ export function cityGrid(edges: GraphEdge[], bounds: { x: number; y: number; w: 
         continue;
       const w = 26 + random() * 8;
       const tall = random() > 0.92;
-      blocks.push({ x: p.x, y: p.y + w * 0.29, w, d: w * 1.155, h: tall ? 24 + random() * 14 : 5 + random() * 11, tone: random() });
+      const far = Math.hypot(p.x - NETWORK_CENTRE.x, (p.y - NETWORK_CENTRE.y) * 1.2) > 250;
+      blocks.push({ x: p.x, y: p.y + w * 0.29, w, d: w * 1.155, h: tall ? 24 + random() * 14 : 5 + random() * 11, tone: random(), far });
     }
   }
   // Paint back to front so nearer blocks overlap farther ones.
@@ -124,4 +128,26 @@ export function isoFaces({ x, y, w, d, h }: Block) {
   ];
   const toPoints = (pts: number[][]) => pts.map(([px, py]) => `${px.toFixed(1)},${py.toFixed(1)}`).join(' ');
   return { top: toPoints(top), left: toPoints(left), right: toPoints(right) };
+}
+
+/**
+ * Soft ground shadows for all blocks as one path: each block's footprint swept toward the
+ * lower right (light from the upper left), so height reads as depth without extra nodes.
+ */
+export function shadowPath(blocks: Block[]): string {
+  return blocks
+    .map(({ x, y, w, d, h }) => {
+      const ox = h * 0.55;
+      const oy = h * 0.22;
+      const pts = [
+        [x, y - d / 2],
+        [x + ox, y - d / 2 + oy],
+        [x + w / 2 + ox, y - d / 4 + oy],
+        [x + ox, y + oy],
+        [x, y],
+        [x - w / 2, y - d / 4],
+      ];
+      return `M${pts.map(([px, py]) => `${px.toFixed(1)} ${py.toFixed(1)}`).join('L')}Z`;
+    })
+    .join('');
 }

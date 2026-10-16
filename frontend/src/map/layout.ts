@@ -70,6 +70,25 @@ export function toPath(points: Point[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 }
 
+export function polylineLength(points: Point[]): number {
+  return points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - points[i].x, p.y - points[i].y), 0);
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+/** Seconds to draw a route line: longer routes take a little longer, within a calm range. */
+export function routeDrawSeconds(points: Point[]): number {
+  return clamp(polylineLength(points) / 420, 1, 1.8);
+}
+
+/**
+ * Seconds for the wheelchair-user figure to travel a route. Scaled by on-map length so longer
+ * routes take longer, but kept readable rather than real time.
+ */
+export function journeySeconds(points: Point[]): number {
+  return clamp(polylineLength(points) / 55, 5, 13);
+}
+
 /** Position at fraction t (0..1) along a polyline, by length. */
 export function pointAt(points: Point[], t: number): Point {
   if (points.length === 1) return points[0];

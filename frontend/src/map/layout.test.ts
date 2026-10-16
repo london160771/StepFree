@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeOnMap, pointAt, routePoints, STATION_POSITIONS } from './layout';
+import { journeySeconds, placeOnMap, pointAt, routeDrawSeconds, routePoints, STATION_POSITIONS } from './layout';
 
 describe('map layout', () => {
   it('draws the route through the stations in the order the API returned them', () => {
@@ -25,5 +25,14 @@ describe('map layout', () => {
     const vic = STATION_POSITIONS.VIC;
     expect(north.y).toBeLessThan(vic.y);
     expect(Math.hypot(north.x - vic.x, north.y - vic.y)).toBeLessThanOrEqual(44);
+  });
+
+  it('paces the journey by route length within a readable range', () => {
+    const baseline = routePoints({ stations: ['VIC', 'GPK', 'WSM', 'WLO', 'SWK', 'LNB'] });
+    const short = routePoints({ stations: ['WLO', 'SWK'] });
+    expect(journeySeconds(baseline)).toBeGreaterThan(journeySeconds(short));
+    expect(journeySeconds(short)).toBeGreaterThanOrEqual(5);
+    expect(journeySeconds(baseline)).toBeLessThanOrEqual(13);
+    expect(routeDrawSeconds(baseline)).toBeLessThanOrEqual(1.8);
   });
 });
