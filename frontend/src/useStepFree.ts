@@ -15,6 +15,7 @@ export type LiveState =
       nearest: { id: string; name: string; distanceMetres: number };
       disruptions: LiftDisruption[];
       userPoint: Point;
+      location: { lat: number; lon: number };
       fetchedAt: string;
     };
 
@@ -165,6 +166,7 @@ export function useStepFree() {
             disruptions: status.disruptions,
             fetchedAt: status.fetchedAt,
             userPoint: placeOnMap(network?.stations ?? [], status.nearestStation.id, latitude, longitude),
+            location: { lat: latitude, lon: longitude },
           });
           setOutageStationIds(affectedStations(status.disruptions, status.unavailableTransferIds));
         } catch (e) {

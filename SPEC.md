@@ -19,7 +19,7 @@ This is a seven-station proof of concept, not a London-wide journey planner.
 2. **Step-free routing:** FalkorDB computes the valid step-free route using the graph's travel-time weights. The same graph engine computes the reroute after a connection is unavailable.
 3. **Demo Mode:** show the baseline Victoria-to-London Bridge route via Green Park, trigger the controlled Green Park lift/pathway outage with a clear **Simulate lift outage** action, then show the alternate route via the District line to Westminster and the Jubilee line onward to London Bridge. The District line journey passes St James's Park without requiring it to be step-free.
 4. **Live Mode:** request browser location permission only after the user chooses Live Mode. If permission is granted, use the browser location to place the animated user figure and map the user to the nearest supported station within the seven-station graph for routing. If permission is denied, Live Mode must not start and Demo Mode remains available. Use real TfL lift disruption data and keep route calculation within the seven-station graph. Outside London, show: **Live Mode is currently available in London only.** Live Mode requires internet access for current TfL disruption data.
-5. **Animated map:** present the supported network in a clean, animated, subtly SimCity-inspired city/transit map. Include a simple animated wheelchair-user figure, route line, station markers, lift icons, and subtle non-distracting train movement.
+5. **Animated map:** present the supported network on a clean, animated 3D map of central London (MapLibre GL JS with OpenFreeMap/OpenStreetMap vector tiles and extruded buildings), with stations at their real coordinates and a schematic SVG map as the offline fallback. Include a simple animated wheelchair-user figure, route line, station markers, lift icons, and subtle non-distracting train movement.
 6. **Installable PWA:** make the frontend installable on mobile and provide a simple install guide with iPhone and Android steps. The installed app shell may work offline, but Live Mode requires internet access for current TfL disruption data.
 7. **Safety note:** display the exact note **based on currently available TfL accessibility data.**
 8. **FalkorDB proof:** make the graph and pathfinding legible in the demo through the supported station/connection map and the visible route change when the Green Park connection is disabled. The proof is part of the map experience; it does not require a separate dashboard.
@@ -94,14 +94,14 @@ stepfree/
 └── .gitignore
 ```
 
-The frontend owns the responsive interface, SVG map rendering, Framer Motion transitions, and PWA installation experience. The backend owns the route API, FalkorDB graph operations, and TfL topology/disruption integration. Keep all graph pathfinding in FalkorDB; the client must not become a second routing engine.
+The frontend owns the responsive interface, the MapLibre 3D map (presentation only) and SVG fallback map, Framer Motion transitions, and PWA installation experience. The backend owns the route API, FalkorDB graph operations, and TfL topology/disruption integration. Keep all graph pathfinding in FalkorDB; the client must not become a second routing engine.
 
 Use only this agreed stack:
 
 | Area | Choice |
 |---|---|
 | Frontend | React, Vite, TypeScript, Tailwind CSS |
-| Map and motion | SVG and Framer Motion |
+| Map and motion | MapLibre GL JS with OpenFreeMap vector tiles (3D buildings), SVG fallback, and Framer Motion |
 | PWA | `vite-plugin-pwa` |
 | Backend | Node.js, Express, TypeScript |
 | Graph and routing | FalkorDB with the official FalkorDB Node client |

@@ -26,7 +26,7 @@ Do not combine the frontend and backend into one application folder.
 
 ## Locked stack
 
-- Frontend: React, Vite, TypeScript, Tailwind CSS, Framer Motion, SVG, and `vite-plugin-pwa`.
+- Frontend: React, Vite, TypeScript, Tailwind CSS, Framer Motion, SVG, `vite-plugin-pwa`, and MapLibre GL JS with OpenFreeMap vector tiles (no API key) for the 3D London map, approved by the project owner. The SVG map remains the offline/no-WebGL fallback.
 - Backend: Node.js, Express, TypeScript, FalkorDB, the official FalkorDB Node client, and TfL APIs/topology data.
 - Tests: Vitest and Supertest.
 - Deployment targets: Vercel for the frontend, Render for the backend, and FalkorDB Cloud when available; otherwise use a self-hosted or Docker-compatible FalkorDB deployment.

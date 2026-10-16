@@ -5,6 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // MapLibre GL is one lazily loaded chunk of about 1 MB (about 290 KB gzipped).
+  build: { chunkSizeWarningLimit: 1200 },
   plugins: [
     react(),
     tailwindcss(),

@@ -8,8 +8,8 @@ Use soft isometric building shapes as quiet context, simple roads/transit lines,
 
 The visual language is:
 
-- **Map:** custom SVG illustration of the seven-station network and restrained city context.
-- **Motion:** Framer Motion for route changes, the station outage pulse, the user figure's small journey animation, and subtle train movement. Keep train motion restrained and non-distracting.
+- **Map:** a calm 3D map of real central London (MapLibre GL JS, OpenFreeMap/OpenStreetMap tiles, extruded buildings in stone and brick tones) with the seven-station network drawn on top at real coordinates. A schematic SVG map is the offline/no-WebGL fallback.
+- **Motion:** Framer Motion and the map camera for the intro hand-off and route changes, the station outage pulse, the user figure's small journey animation, and subtle train movement. Keep train motion restrained and non-distracting.
 - **Route:** a high-contrast line drawn over the network with clear origin/destination and transfer points.
 - **Accessibility cues:** lift icons and explicit text labels; do not communicate an outage by color alone.
 - **Tone:** calm and reassuring, especially while a route is being recalculated.

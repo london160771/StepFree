@@ -29,7 +29,7 @@ StepFree is an installable PWA. The **Install** page has short iPhone (Safari) a
 ## Project layout
 
 ```text
-frontend/   React + Vite + TypeScript + Tailwind CSS + Framer Motion (SVG map), PWA via vite-plugin-pwa
+frontend/   React + Vite + TypeScript + Tailwind CSS + Framer Motion, MapLibre GL 3D map, PWA via vite-plugin-pwa
 backend/    Node.js + Express + TypeScript API, FalkorDB routing, TfL integration
   data/network.json         seven-station graph built from TfL data (committed)
   scripts/build-network.ts  rebuilds network.json from TfL topology, timetable and StopPoint APIs
@@ -93,6 +93,8 @@ Ride times come from the TfL timetable API. Step-free transfer times assume 3 km
 
 Graph routing by [FalkorDB](https://www.falkordb.com/). Transit, station topology and lift data from Transport for London. Powered by TfL Open Data.
 
-City backdrop: built from [OpenStreetMap](https://www.openstreetmap.org/copyright) data, © OpenStreetMap contributors, available under the Open Database License. `frontend/scripts/build-city.mjs` warps real central London onto the station layout and renders it as images in `frontend/public/city/`; no OSM data is bundled.
+3D map: [MapLibre GL JS](https://maplibre.org/) with the [OpenFreeMap](https://openfreemap.org) Positron style and vector tiles (no API key). Map credit shown in the app: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap. The map is presentation only: every route still comes from FalkorDB. If the tiles can't load (offline) the app falls back to the schematic map.
+
+Fallback city backdrop: built from [OpenStreetMap](https://www.openstreetmap.org/copyright) data, © OpenStreetMap contributors, available under the Open Database License. `frontend/scripts/build-city.mjs` warps real central London onto the station layout and renders it as images in `frontend/public/city/`; no OSM data is bundled.
 
 Intro photo: [Big Ben and Westminster Bridge at dusk](https://commons.wikimedia.org/wiki/File:Big_Ben_and_Westminster_Bridge_at_dusk_2017-unsplash.jpg), CC0 (public domain dedication), via Wikimedia Commons. Resized and cropped to WebP in `frontend/public/intro/`.

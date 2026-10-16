@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Mode } from './api';
 import { RoutePanel } from './components/RoutePanel';
 import { TransitMap } from './map/TransitMap';
@@ -9,6 +9,17 @@ import { useMapFrame } from './map/useMapFrame';
 import { About } from './pages/About';
 import { InstallGuide } from './pages/InstallGuide';
 import { useStepFree } from './useStepFree';
+
+// MapLibre is loaded on demand so the app shell stays light; the schematic map is the offline fallback.
+const LondonMap = lazy(() =>
+  // If the map code itself can't load (offline before it was cached), fall back straight away.
+  import('./map/LondonMap').catch(() => ({ default: MapUnavailable as typeof import('./map/LondonMap').default })),
+);
+
+function MapUnavailable({ onFail }: { onFail: () => void }) {
+  useEffect(onFail, [onFail]);
+  return <></>;
+}
 
 type Page = 'map' | 'install' | 'about';
 
@@ -23,11 +34,33 @@ export default function App() {
   // The intro plays once, on a first load of the map, and never with reduced motion.
   const [introEnabled] = useState(() => pageFromHash() === 'map' && !reduceMotion);
   const [stage, setStage] = useState<IntroStage>(introEnabled ? 'photo' : 'done');
+  // The photo holds until the 3D city has loaded (within a limit), so it never dissolves into an empty map.
+  const mapReady = useRef(false);
+  const photoDone = useRef(false);
+  const tryReveal = useCallback(() => {
+    if (mapReady.current && photoDone.current) setStage((current) => (current === 'photo' ? 'reveal' : current));
+  }, []);
   useEffect(() => {
-    if (stage === 'done') return;
-    const timer = setTimeout(() => setStage(stage === 'photo' ? 'reveal' : 'done'), stage === 'photo' ? INTRO.photoMs : INTRO.overlayMs);
+    if (stage !== 'photo') return;
+    const minimum = setTimeout(() => {
+      photoDone.current = true;
+      tryReveal();
+    }, INTRO.photoMs);
+    const limit = setTimeout(() => setStage('reveal'), INTRO.photoMs + INTRO.mapWaitMs);
+    return () => {
+      clearTimeout(minimum);
+      clearTimeout(limit);
+    };
+  }, [stage, tryReveal]);
+  useEffect(() => {
+    if (stage !== 'reveal') return;
+    const timer = setTimeout(() => setStage('done'), INTRO.overlayMs);
     return () => clearTimeout(timer);
   }, [stage]);
+  const onMapReady = useCallback(() => {
+    mapReady.current = true;
+    tryReveal();
+  }, [tryReveal]);
   const skipIntro = () => setStage((current) => (current === 'photo' ? 'reveal' : current));
   useEffect(() => {
     const onHash = () => setPage(pageFromHash());
@@ -55,7 +88,7 @@ export default function App() {
           </a>
         </nav>
       </motion.header>
-      {page === 'map' ? <MapHome introEnabled={introEnabled} stage={stage} onSkip={skipIntro} /> : page === 'install' ? <InstallGuide /> : <About />}
+      {page === 'map' ? <MapHome introEnabled={introEnabled} stage={stage} onSkip={skipIntro} onMapReady={onMapReady} /> : page === 'install' ? <InstallGuide /> : <About />}
     </div>
   );
 }
@@ -74,42 +107,82 @@ function settleIn(introEnabled: boolean, stage: IntroStage, y: number) {
   };
 }
 
-function MapHome({ introEnabled, stage, onSkip }: { introEnabled: boolean; stage: IntroStage; onSkip: () => void }) {
+function MapHome({
+  introEnabled,
+  stage,
+  onSkip,
+  onMapReady,
+}: {
+  introEnabled: boolean;
+  stage: IntroStage;
+  onSkip: () => void;
+  onMapReady: () => void;
+}) {
   const store = useStepFree();
   const mapRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   // On phones the sheet covers up to ~46% of the screen; reserve that so the map never jumps as results change.
   const frame = useMapFrame(mapRef, { top: 112, left: isDesktop ? 440 : 0, bottom: isDesktop ? 24 : 0, bottomRatio: isDesktop ? 0 : 0.46 });
   const userPoint = store.mode === 'live' && store.live.status === 'ready' ? store.live.userPoint : null;
+  const userLocation = store.mode === 'live' && store.live.status === 'ready' ? store.live.location : null;
+  const [map3d, setMap3d] = useState(true);
+  const size = useElementSize(mapRef);
+  const entrance = !introEnabled ? 'none' : stage === 'photo' ? 'hidden' : 'reveal';
+  const padding = isDesktop
+    ? { top: 140, left: 600, right: 90, bottom: 150 }
+    : { top: 160, left: 90, right: 40, bottom: Math.round(size.height * 0.46) + 30 };
 
   return (
     <main className="relative h-full">
       <div ref={mapRef} className="absolute inset-0">
-        {/* Camera: starts close over Westminster and the river, then pulls back as the city builds. */}
-        <motion.div
-          className="absolute inset-0"
-          style={{ transformOrigin: '62% 40%' }}
-          initial={introEnabled ? { scale: 1.3, y: 28 } : false}
-          animate={stage === 'photo' ? { scale: 1.3, y: 28 } : { scale: 1, y: 0 }}
-          transition={{ duration: 2.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-        {store.network && (
-          <TransitMap
-            frame={frame}
-            stations={store.network.stations}
-            edges={store.network.edges}
-            route={store.route}
-            fadingRoute={store.fadingRoute}
-            outageStationIds={store.outageStationIds}
-            userPoint={userPoint}
-            journeyKey={store.journeyKey}
-            entrance={!introEnabled ? 'none' : stage === 'photo' ? 'hidden' : 'reveal'}
-          />
+        {store.network && map3d && (
+          <Suspense fallback={null}>
+            <LondonMap
+              stations={store.network.stations}
+              edges={store.network.edges}
+              route={store.route}
+              fadingRoute={store.fadingRoute}
+              outageStationIds={store.outageStationIds}
+              userLocation={userLocation}
+              journeyKey={store.journeyKey}
+              entrance={entrance}
+              compact={!isDesktop}
+              padding={padding}
+              onFail={() => {
+                setMap3d(false);
+                onMapReady();
+              }}
+              onReady={onMapReady}
+            />
+          </Suspense>
         )}
-        </motion.div>
-        <p className="pointer-events-none absolute bottom-3 right-3 z-10 hidden rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600 lg:block">
-          Map data © OpenStreetMap contributors
-        </p>
+        {store.network && !map3d && (
+          <>
+            {/* Offline or no WebGL: the schematic map, with the same routes and states. */}
+            <motion.div
+              className="absolute inset-0"
+              style={{ transformOrigin: '62% 40%' }}
+              initial={introEnabled ? { scale: 1.3, y: 28 } : false}
+              animate={stage === 'photo' ? { scale: 1.3, y: 28 } : { scale: 1, y: 0 }}
+              transition={{ duration: 2.4, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <TransitMap
+                frame={frame}
+                stations={store.network.stations}
+                edges={store.network.edges}
+                route={store.route}
+                fadingRoute={store.fadingRoute}
+                outageStationIds={store.outageStationIds}
+                userPoint={userPoint}
+                journeyKey={store.journeyKey}
+                entrance={entrance}
+              />
+            </motion.div>
+            <p className="pointer-events-none absolute bottom-3 right-3 z-10 hidden rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600 lg:block">
+              Map data © OpenStreetMap contributors
+            </p>
+          </>
+        )}
         {/* Unmounted by a timer (not an exit animation), so it can never linger over the map. */}
         {introEnabled && stage !== 'done' && <Intro leaving={stage === 'reveal'} onSkip={onSkip} />}
         <motion.div
@@ -127,7 +200,17 @@ function MapHome({ introEnabled, stage, onSkip }: { introEnabled: boolean; stage
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200 lg:hidden" aria-hidden />
         <RoutePanel store={store} />
-        <p className="mt-3 text-xs text-slate-400 lg:hidden">Map data © OpenStreetMap contributors</p>
+        <p className="mt-3 text-xs text-slate-400 lg:hidden">
+          {map3d ? (
+            <>
+              <a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a>{' '}
+              <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">© OpenMapTiles</a> Data from{' '}
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>
+            </>
+          ) : (
+            'Map data © OpenStreetMap contributors'
+          )}
+        </p>
       </motion.section>
     </main>
   );
@@ -154,6 +237,20 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => 
       ))}
     </div>
   );
+}
+
+function useElementSize(ref: React.RefObject<HTMLElement | null>) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setSize((prev) => (prev.width === el.clientWidth && prev.height === el.clientHeight ? prev : { width: el.clientWidth, height: el.clientHeight }));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return size;
 }
 
 function useMediaQuery(query: string) {

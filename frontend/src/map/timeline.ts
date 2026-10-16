@@ -4,6 +4,8 @@
 export const INTRO = {
   /** Photo + brand phase; the map reveal starts after this. */
   photoMs: 3600,
+  /** Longest extra hold for the 3D city to load before the intro hands over anyway. */
+  mapWaitMs: 3000,
   /** Overlay removed this long after the reveal starts (by timer, never by animation). */
   overlayMs: 1600,
   /** Skip button appears after this. */
