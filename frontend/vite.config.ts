@@ -32,7 +32,7 @@ export default defineConfig({
       },
       workbox: {
         // Precache the app shell only. Routes and live TfL lift data always come from the API over the network.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webp}'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },

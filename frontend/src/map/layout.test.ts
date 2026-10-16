@@ -31,8 +31,9 @@ describe('map layout', () => {
     const baseline = routePoints({ stations: ['VIC', 'GPK', 'WSM', 'WLO', 'SWK', 'LNB'] });
     const short = routePoints({ stations: ['WLO', 'SWK'] });
     expect(journeySeconds(baseline)).toBeGreaterThan(journeySeconds(short));
-    expect(journeySeconds(short)).toBeGreaterThanOrEqual(5);
-    expect(journeySeconds(baseline)).toBeLessThanOrEqual(13);
+    expect(journeySeconds(short)).toBeGreaterThanOrEqual(7);
+    expect(journeySeconds(baseline)).toBeGreaterThan(15);
+    expect(journeySeconds(baseline)).toBeLessThanOrEqual(18);
     expect(routeDrawSeconds(baseline)).toBeLessThanOrEqual(1.8);
   });
 });

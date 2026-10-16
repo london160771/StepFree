@@ -5,18 +5,26 @@
   -webkit-font-smoothing: antialiased;
   --map-ground: #f3f1ec;
   --map-water: #cfe3ee;
-  --map-park: #dcecd5;
+  --map-bank: #e3ded3;
+  --map-park: #dcebd3;
+  --map-park-edge: #cfe0c4;
+  --tree: #b9d4ab;
+  --tree-light: #cde2c0;
   --map-road: #fbfaf7;
+  --map-road-main: #ffffff;
   --danger: #c62828;
   --danger-soft: #fde8e8;
-  --block-a-top: #ffffff;
-  --block-a-left: #e8e5df;
-  --block-a-right: #ecebe6;
-  --block-b-top: #fbfaf7;
-  --block-b-left: #e2ded6;
-  --block-b-right: #e7e4dd;
-  --block-c-top: #f7f8fa;
-  --block-c-left: #e2e6eb;
+  /* Portland stone */
+  --block-a-top: #fbf9f4;
+  --block-a-left: #e6e0d4;
+  --block-a-right: #eee9df;
+  /* Soft London brick */
+  --block-b-top: #f7f1ea;
+  --block-b-left: #e4d6c9;
+  --block-b-right: #ece2d7;
+  /* Slate and glass */
+  --block-c-top: #f5f7f9;
+  --block-c-left: #dfe4ea;
   --block-c-right: #e8ecf0;
 }
 

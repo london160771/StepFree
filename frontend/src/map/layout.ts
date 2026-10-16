@@ -86,7 +86,7 @@ export function routeDrawSeconds(points: Point[]): number {
  * routes take longer, but kept readable rather than real time.
  */
 export function journeySeconds(points: Point[]): number {
-  return clamp(polylineLength(points) / 55, 5, 13);
+  return clamp(polylineLength(points) / 38, 7, 18);
 }
 
 /** Position at fraction t (0..1) along a polyline, by length. */

@@ -21,12 +21,14 @@ export default function App() {
   const [page, setPage] = useState<Page>(pageFromHash);
   const reduceMotion = useReducedMotion() ?? false;
   // The intro plays once, on a first load of the map, and never with reduced motion.
-  const [intro, setIntro] = useState(() => pageFromHash() === 'map' && !reduceMotion);
+  const [introEnabled] = useState(() => pageFromHash() === 'map' && !reduceMotion);
+  const [stage, setStage] = useState<IntroStage>(introEnabled ? 'photo' : 'done');
   useEffect(() => {
-    if (!intro) return;
-    const timer = setTimeout(() => setIntro(false), INTRO.settledMs);
+    if (stage === 'done') return;
+    const timer = setTimeout(() => setStage(stage === 'photo' ? 'reveal' : 'done'), stage === 'photo' ? INTRO.photoMs : INTRO.overlayMs);
     return () => clearTimeout(timer);
-  }, [intro]);
+  }, [stage]);
+  const skipIntro = () => setStage((current) => (current === 'photo' ? 'reveal' : current));
   useEffect(() => {
     const onHash = () => setPage(pageFromHash());
     window.addEventListener('hashchange', onHash);
@@ -36,9 +38,7 @@ export default function App() {
   return (
     <div className="relative h-dvh overflow-hidden bg-[var(--map-ground)] text-slate-900">
       <motion.header
-        initial={intro ? { opacity: 0, y: -8 } : false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: INTRO.controls, duration: 0.5 }}
+        {...settleIn(introEnabled, stage, -8)}
         className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),0.75rem)]">
         <a href="#/" className="pointer-events-auto rounded-full bg-white/90 px-3 py-1.5 text-lg font-bold tracking-tight shadow-sm backdrop-blur">
           Step<span className="text-teal-700">Free</span>
@@ -55,21 +55,27 @@ export default function App() {
           </a>
         </nav>
       </motion.header>
-      {page === 'map' ? <MapHome intro={intro} /> : page === 'install' ? <InstallGuide /> : <About />}
+      {page === 'map' ? <MapHome introEnabled={introEnabled} stage={stage} onSkip={skipIntro} /> : page === 'install' ? <InstallGuide /> : <About />}
     </div>
   );
 }
 
-function MapHome({ intro }: { intro: boolean }) {
+type IntroStage = 'photo' | 'reveal' | 'done';
+
+/** Hidden (and not tappable) during the photo, then eased in once the map has started to build. */
+function settleIn(introEnabled: boolean, stage: IntroStage, y: number) {
+  if (!introEnabled) return {};
+  const hidden = stage === 'photo';
+  return {
+    initial: { opacity: 0, y },
+    animate: hidden ? { opacity: 0, y } : { opacity: 1, y: 0 },
+    transition: { delay: hidden ? 0 : INTRO.controls, duration: 0.6, ease: 'easeOut' as const },
+    style: { pointerEvents: hidden ? ('none' as const) : undefined },
+  };
+}
+
+function MapHome({ introEnabled, stage, onSkip }: { introEnabled: boolean; stage: IntroStage; onSkip: () => void }) {
   const store = useStepFree();
-  const [heroVisible, setHeroVisible] = useState(intro);
-  useEffect(() => {
-    if (!heroVisible) return;
-    const timer = setTimeout(() => setHeroVisible(false), INTRO.heroMs);
-    return () => clearTimeout(timer);
-  }, [heroVisible]);
-  const controlsIn = (y: number) =>
-    intro ? { initial: { opacity: 0, y }, animate: { opacity: 1, y: 0 }, transition: { delay: INTRO.controls, duration: 0.5, ease: 'easeOut' as const } } : {};
   const mapRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   // On phones the sheet covers up to ~46% of the screen; reserve that so the map never jumps as results change.
@@ -79,12 +85,13 @@ function MapHome({ intro }: { intro: boolean }) {
   return (
     <main className="relative h-full">
       <div ref={mapRef} className="absolute inset-0">
-        {/* Camera: a soft settle from slightly closer in, so the city feels like it comes alive. */}
+        {/* Camera: starts close over Westminster and the river, then pulls back as the city builds. */}
         <motion.div
           className="absolute inset-0"
-          initial={intro ? { scale: 1.08, y: 10 } : false}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ duration: 2.1, ease: [0.22, 1, 0.36, 1] }}
+          style={{ transformOrigin: '62% 40%' }}
+          initial={introEnabled ? { scale: 1.3, y: 28 } : false}
+          animate={stage === 'photo' ? { scale: 1.3, y: 28 } : { scale: 1, y: 0 }}
+          transition={{ duration: 2.4, ease: [0.22, 1, 0.36, 1] }}
         >
         {store.network && (
           <TransitMap
@@ -96,14 +103,14 @@ function MapHome({ intro }: { intro: boolean }) {
             outageStationIds={store.outageStationIds}
             userPoint={userPoint}
             journeyKey={store.journeyKey}
-            intro={intro}
+            entrance={!introEnabled ? 'none' : stage === 'photo' ? 'hidden' : 'reveal'}
           />
         )}
         </motion.div>
         {/* Unmounted by a timer (not an exit animation), so it can never linger over the map. */}
-        {intro && <Intro leaving={!heroVisible} />}
+        {introEnabled && stage !== 'done' && <Intro leaving={stage === 'reveal'} onSkip={onSkip} />}
         <motion.div
-          {...controlsIn(-8)}
+          {...settleIn(introEnabled, stage, -8)}
           className="absolute inset-x-0 top-[calc(max(env(safe-area-inset-top),0.75rem)+3.25rem)] z-10 flex justify-center lg:left-[440px]"
         >
           <ModeSwitch mode={store.mode} onChange={store.setMode} />
@@ -112,9 +119,7 @@ function MapHome({ intro }: { intro: boolean }) {
 
       <motion.section
         aria-label="Plan a step-free route"
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: 'easeOut', delay: intro ? INTRO.controls : 0 }}
+        {...(introEnabled ? settleIn(introEnabled, stage, 40) : { initial: { y: 40, opacity: 0 }, animate: { y: 0, opacity: 1 }, transition: { duration: 0.5, ease: 'easeOut' } })}
         className="absolute inset-x-0 bottom-0 z-10 max-h-[48dvh] overflow-y-auto rounded-t-3xl bg-white px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 shadow-[0_-8px_30px_rgba(15,23,42,0.12)] lg:inset-x-auto lg:bottom-auto lg:left-6 lg:top-20 lg:max-h-[calc(100dvh-6.5rem)] lg:w-[400px] lg:rounded-3xl lg:pt-6 lg:shadow-xl"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200 lg:hidden" aria-hidden />

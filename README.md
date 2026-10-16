@@ -92,3 +92,5 @@ Ride times come from the TfL timetable API. Step-free transfer times assume 3 km
 ## Credits
 
 Graph routing by [FalkorDB](https://www.falkordb.com/). Transit, station topology and lift data from Transport for London. Powered by TfL Open Data.
+
+Intro photo: [Big Ben and Westminster Bridge at dusk](https://commons.wikimedia.org/wiki/File:Big_Ben_and_Westminster_Bridge_at_dusk_2017-unsplash.jpg), CC0 (public domain dedication), via Wikimedia Commons. Resized and cropped to WebP in `frontend/public/intro/`.

@@ -62,6 +62,8 @@ const lattice = (u: number, v: number): Point => ({
 export interface Road {
   a: Point;
   b: Point;
+  /** Main roads are wider and brighter, like London's arterial streets. */
+  main: boolean;
 }
 
 /**
@@ -79,7 +81,8 @@ export function cityGrid(edges: GraphEdge[], bounds: { x: number; y: number; w: 
 
   const roads: Road[] = [];
   for (let k = -span; k <= span; k += ROAD_EVERY) {
-    roads.push({ a: lattice(k, -span), b: lattice(k, span) }, { a: lattice(-span, k), b: lattice(span, k) });
+    const main = k % (ROAD_EVERY * 3) === 0;
+    roads.push({ a: lattice(k, -span), b: lattice(k, span), main }, { a: lattice(-span, k), b: lattice(span, k), main });
   }
 
   const blocks: Block[] = [];
@@ -151,3 +154,33 @@ export function shadowPath(blocks: Block[]): string {
     })
     .join('');
 }
+
+export interface Tree {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/** Deterministic tree canopies scattered inside the parks. */
+export function parkTrees(): Tree[] {
+  const trees: Tree[] = [];
+  PARKS.forEach((park, n) => {
+    const random = seeded(97 + n * 31);
+    const count = Math.round((park.w * park.h) / 260);
+    for (let i = 0; i < count; i++) {
+      trees.push({
+        x: park.x + 8 + random() * (park.w - 16),
+        y: park.y + 8 + random() * (park.h - 16),
+        r: 3.2 + random() * 2.6,
+      });
+    }
+  });
+  return trees.sort((a, b) => a.y - b.y);
+}
+
+/** Bridges across the Thames near Westminster and Waterloo (decorative). */
+export const BRIDGES: Array<[Point, Point]> = [
+  [{ x: 202, y: 377 }, { x: 239, y: 393 }],
+  [{ x: 314, y: 280 }, { x: 326, y: 318 }],
+  [{ x: 443, y: 301 }, { x: 437, y: 341 }],
+];
