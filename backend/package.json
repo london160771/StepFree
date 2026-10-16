@@ -9,8 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "topology": "tsx scripts/build-network.ts",
-    "seed": "tsx scripts/seed.ts"
+    "topology": "tsx scripts/build-network.ts"
   },
   "engines": {
     "node": ">=20"
