@@ -6,16 +6,17 @@
   --map-ground: #f3f1ec;
   --map-water: #cfe3ee;
   --map-park: #dcecd5;
+  --map-road: #fbfaf7;
   --danger: #c62828;
   --danger-soft: #fde8e8;
   --block-a-top: #ffffff;
-  --block-a-left: #e4e1da;
+  --block-a-left: #e8e5df;
   --block-a-right: #ecebe6;
   --block-b-top: #fbfaf7;
-  --block-b-left: #dcd8cf;
+  --block-b-left: #e2ded6;
   --block-b-right: #e7e4dd;
   --block-c-top: #f7f8fa;
-  --block-c-left: #dde2e8;
+  --block-c-left: #e2e6eb;
   --block-c-right: #e8ecf0;
 }
 

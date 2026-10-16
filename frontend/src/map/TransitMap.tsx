@@ -1,7 +1,7 @@
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import { useEffect, useMemo } from 'react';
 import type { GraphEdge, LineId, Route, Station } from '../api';
-import { PARKS, RIVER_POINTS, cityBlocks, isoFaces } from './city';
+import { PARKS, RIVER_POINTS, cityGrid, isoFaces } from './city';
 import {
   LABEL_ANCHORS,
   LIFT_OFFSETS,
@@ -40,7 +40,7 @@ interface Props {
 
 export function TransitMap({ frame, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey }: Props) {
   const reduceMotion = useReducedMotion() ?? false;
-  const blocks = useMemo(() => cityBlocks(edges, frame), [edges, frame]);
+  const city = useMemo(() => cityGrid(edges, frame), [edges, frame]);
   const lines = useMemo(() => lineSegments(edges), [edges]);
   const routeLifts = useMemo(() => liftStations(route), [route]);
   const points = route ? routePoints(route) : null;
@@ -68,6 +68,11 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
       <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="var(--map-ground)" />
 
       {/* City context */}
+      <g aria-hidden>
+        {city.roads.map((road, i) => (
+          <line key={i} x1={road.a.x} y1={road.a.y} x2={road.b.x} y2={road.b.y} stroke="var(--map-road)" strokeWidth={9} />
+        ))}
+      </g>
       <polyline
         points={RIVER_POINTS.map((p) => `${p.x},${p.y}`).join(' ')}
         fill="none"
@@ -80,7 +85,7 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
         <rect key={`${p.x}-${p.y}`} x={p.x} y={p.y} width={p.w} height={p.h} rx={p.r} fill="var(--map-park)" />
       ))}
       <g aria-hidden>
-        {blocks.map((block, i) => {
+        {city.blocks.map((block, i) => {
           const faces = isoFaces(block);
           const shade = block.tone > 0.66 ? 'b' : block.tone > 0.33 ? 'a' : 'c';
           return (
@@ -277,14 +282,12 @@ function OutagePulse({ at, reduceMotion }: { at: Point; reduceMotion: boolean })
         <motion.circle
           cx={at.x}
           cy={at.y}
-          r={14}
           fill="none"
           stroke="var(--danger)"
           strokeWidth={3}
-          initial={{ scale: 0.8, opacity: 0.9 }}
-          animate={{ scale: 2.2, opacity: 0 }}
+          initial={{ r: 12, opacity: 0.9 }}
+          animate={{ r: 32, opacity: 0 }}
           transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-          style={{ transformOrigin: `${at.x}px ${at.y}px`, transformBox: 'view-box' }}
         />
       )}
     </>

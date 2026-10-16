@@ -74,7 +74,7 @@ function MapHome() {
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="absolute inset-x-0 bottom-0 z-10 max-h-[48dvh] overflow-y-auto rounded-t-3xl bg-white px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 shadow-[0_-8px_30px_rgba(15,23,42,0.12)] lg:inset-x-auto lg:bottom-6 lg:left-6 lg:top-20 lg:max-h-none lg:w-[400px] lg:rounded-3xl lg:pt-6 lg:shadow-xl"
+        className="absolute inset-x-0 bottom-0 z-10 max-h-[48dvh] overflow-y-auto rounded-t-3xl bg-white px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 shadow-[0_-8px_30px_rgba(15,23,42,0.12)] lg:inset-x-auto lg:bottom-auto lg:left-6 lg:top-20 lg:max-h-[calc(100dvh-6.5rem)] lg:w-[400px] lg:rounded-3xl lg:pt-6 lg:shadow-xl"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200 lg:hidden" aria-hidden />
         <RoutePanel store={store} />

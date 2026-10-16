@@ -45,28 +45,61 @@ function seeded(seed: number) {
   };
 }
 
-/** Deterministic soft isometric blocks that stay clear of the network, labels, parks and river. */
-export function cityBlocks(edges: GraphEdge[], bounds: { x: number; y: number; w: number; h: number }): Block[] {
-  const random = seeded(7);
+/** Isometric street lattice: cell axes at +/-30 degrees, a road every ROAD_EVERY cells. */
+const ORIGIN = { x: 200, y: 300 };
+const AXIS_U = { x: 22.5, y: 13 };
+const AXIS_V = { x: -22.5, y: 13 };
+const ROAD_EVERY = 4;
+
+const lattice = (u: number, v: number): Point => ({
+  x: ORIGIN.x + u * AXIS_U.x + v * AXIS_V.x,
+  y: ORIGIN.y + u * AXIS_U.y + v * AXIS_V.y,
+});
+
+export interface Road {
+  a: Point;
+  b: Point;
+}
+
+/**
+ * Deterministic soft isometric city: a quiet street grid with low blocks that stay clear of the
+ * network, station labels, parks and river.
+ */
+export function cityGrid(edges: GraphEdge[], bounds: { x: number; y: number; w: number; h: number }) {
   const segments: Array<[Point, Point]> = edges
     .filter((e) => e.type === 'RIDE')
     .map((e) => [STATION_POSITIONS[e.from.split(':')[0]], STATION_POSITIONS[e.to.split(':')[0]]]);
   const stations = Object.values(STATION_POSITIONS);
+  const inside = (p: Point, margin: number) =>
+    p.x > bounds.x - margin && p.x < bounds.x + bounds.w + margin && p.y > bounds.y - margin && p.y < bounds.y + bounds.h + margin;
+  const span = 48;
+
+  const roads: Road[] = [];
+  for (let k = -span; k <= span; k += ROAD_EVERY) {
+    roads.push({ a: lattice(k, -span), b: lattice(k, span) }, { a: lattice(-span, k), b: lattice(span, k) });
+  }
+
   const blocks: Block[] = [];
-  for (let y = bounds.y - 20; y < bounds.y + bounds.h + 40; y += 38) {
-    for (let x = bounds.x - 20; x < bounds.x + bounds.w + 40; x += 44) {
-      const p = { x: x + (random() - 0.5) * 18, y: y + (random() - 0.5) * 14 };
-      if (random() < 0.28) continue;
-      if (segments.some(([a, b]) => segmentDistance(p, a, b) < 30)) continue;
-      if (stations.some((s) => Math.hypot(s.x - p.x, s.y - p.y) < 62)) continue;
-      if (RIVER_POINTS.slice(1).some((b, i) => segmentDistance(p, RIVER_POINTS[i], b) < 34)) continue;
-      if (PARKS.some((park) => p.x > park.x - 18 && p.x < park.x + park.w + 18 && p.y > park.y - 18 && p.y < park.y + park.h + 18))
+  for (let u = -span; u < span; u++) {
+    for (let v = -span; v < span; v++) {
+      if (u % ROAD_EVERY === 0 || v % ROAD_EVERY === 0) continue;
+      const p = lattice(u + 0.5, v + 0.5);
+      if (!inside(p, 40)) continue;
+      // Seed per cell so the city does not reshuffle when the visible frame changes.
+      const random = seeded((u + 1000) * 7919 + (v + 1000) * 104729);
+      if (random() < 0.32) continue;
+      if (segments.some(([a, b]) => segmentDistance(p, a, b) < 26)) continue;
+      if (stations.some((s) => Math.hypot(s.x - p.x, s.y - p.y) < 58)) continue;
+      if (RIVER_POINTS.slice(1).some((b, i) => segmentDistance(p, RIVER_POINTS[i], b) < 30)) continue;
+      if (PARKS.some((park) => p.x > park.x - 14 && p.x < park.x + park.w + 14 && p.y > park.y - 14 && p.y < park.y + park.h + 14))
         continue;
-      blocks.push({ x: p.x, y: p.y, w: 10 + random() * 8, d: 8 + random() * 6, h: 6 + random() * 16, tone: random() });
+      const w = 26 + random() * 8;
+      const tall = random() > 0.92;
+      blocks.push({ x: p.x, y: p.y + w * 0.29, w, d: w * 1.155, h: tall ? 24 + random() * 14 : 5 + random() * 11, tone: random() });
     }
   }
   // Paint back to front so nearer blocks overlap farther ones.
-  return blocks.sort((a, b) => a.y - b.y);
+  return { roads, blocks: blocks.sort((a, b) => a.y - b.y) };
 }
 
 /** Faces of an isometric box whose footprint is centred on (x, y). */

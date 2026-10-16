@@ -39,7 +39,7 @@ function LiveEntry({ store }: { store: Store }) {
     </button>
   );
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="popLayout" initial={false}>
       <motion.div key={live.status} {...fade} className="space-y-4">
         {(live.status === 'prompt' || live.status === 'locating') && (
           <>
@@ -152,7 +152,7 @@ function Planner({ store }: { store: Store }) {
       )}
 
       <div aria-live="polite">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div key={phase === 'route' || phase === 'rerouted' ? `result-${route?.stations.join('-')}` : phase} {...fade}>
             <PhaseContent store={store} name={name} />
           </motion.div>
