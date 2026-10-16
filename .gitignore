@@ -12,3 +12,6 @@ coverage/
 
 # Raw TfL downloads (regenerate with npm run topology)
 backend/data/raw/
+
+# Local Claude Code preview config
+.claude/

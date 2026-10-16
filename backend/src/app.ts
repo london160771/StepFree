@@ -85,9 +85,10 @@ export function createApp({ routing, liveDisruptions, corsOrigin }: AppDeps) {
   });
 
   /** Live Mode entry: London check, nearest supported station and current lift disruptions. */
-  app.get('/api/live/status', async (req, res) => {
-    const lat = Number(req.query.lat);
-    const lon = Number(req.query.lon);
+  // POST keeps the user's location out of URLs and access logs.
+  app.post('/api/live/status', async (req, res) => {
+    const lat = Number(req.body?.lat);
+    const lon = Number(req.body?.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
       throw new HttpError(400, 'A valid location is required.');
     }

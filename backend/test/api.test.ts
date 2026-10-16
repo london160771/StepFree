@@ -71,19 +71,19 @@ describe('Live Mode API', () => {
   it('maps a London location to the nearest supported station', async () => {
     liveSnapshot = { fetchedAt: '2026-01-01T00:00:00.000Z', disruptions: [] };
     // Near Buckingham Palace Road, closest to Victoria.
-    const res = await request(app).get('/api/live/status').query({ lat: 51.4955, lon: -0.1445 }).expect(200);
+    const res = await request(app).post('/api/live/status').send({ lat: 51.4955, lon: -0.1445 }).expect(200);
     expect(res.body.inLondon).toBe(true);
     expect(res.body.nearestStation.id).toBe('VIC');
   });
 
   it('does not map users to a station without step-free street access', async () => {
     const sjp = network.stations.find((s) => s.id === 'SJP')!;
-    const res = await request(app).get('/api/live/status').query({ lat: sjp.lat, lon: sjp.lon }).expect(200);
+    const res = await request(app).post('/api/live/status').send({ lat: sjp.lat, lon: sjp.lon }).expect(200);
     expect(res.body.nearestStation.id).not.toBe('SJP');
   });
 
   it('is London only', async () => {
-    const res = await request(app).get('/api/live/status').query({ lat: 53.4808, lon: -2.2426 }).expect(200);
+    const res = await request(app).post('/api/live/status').send({ lat: 53.4808, lon: -2.2426 }).expect(200);
     expect(res.body).toEqual({ inLondon: false, message: 'Live Mode is currently available in London only.' });
   });
 
