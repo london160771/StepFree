@@ -1,0 +1,3360 @@
+{
+  "source": {
+    "topologyUrl": "https://api.tfl.gov.uk/stationdata/tfl-stationdata-detailed.zip",
+    "topologyFeedStartDate": "2026-08-03T09:14+00:00",
+    "timetableUrls": [
+      "https://api.tfl.gov.uk/Line/victoria/Timetable/940GZZLUVIC/to/940GZZLUGPK",
+      "https://api.tfl.gov.uk/Line/district/Timetable/940GZZLUVIC/to/940GZZLUWSM",
+      "https://api.tfl.gov.uk/Line/jubilee/Timetable/940GZZLUGPK/to/940GZZLULNB"
+    ],
+    "generatedAt": "2026-10-16T14:52:55.989Z"
+  },
+  "stations": [
+    {
+      "id": "VIC",
+      "name": "Victoria",
+      "naptanId": "940GZZLUVIC",
+      "topologyId": "HUBVIC",
+      "lat": 51.495812,
+      "lon": -0.143826,
+      "stepFreeStreetAccess": true
+    },
+    {
+      "id": "GPK",
+      "name": "Green Park",
+      "naptanId": "940GZZLUGPK",
+      "topologyId": "940GZZLUGPK",
+      "lat": 51.506947,
+      "lon": -0.142787,
+      "stepFreeStreetAccess": true
+    },
+    {
+      "id": "SJP",
+      "name": "St James's Park",
+      "naptanId": "940GZZLUSJP",
+      "topologyId": "940GZZLUSJP",
+      "lat": 51.499544,
+      "lon": -0.133608,
+      "stepFreeStreetAccess": false
+    },
+    {
+      "id": "WSM",
+      "name": "Westminster",
+      "naptanId": "940GZZLUWSM",
+      "topologyId": "HUBWSM",
+      "lat": 51.501603,
+      "lon": -0.125984,
+      "stepFreeStreetAccess": true
+    },
+    {
+      "id": "WLO",
+      "name": "Waterloo",
+      "naptanId": "940GZZLUWLO",
+      "topologyId": "HUBWAT",
+      "lat": 51.504269,
+      "lon": -0.113356,
+      "stepFreeStreetAccess": true
+    },
+    {
+      "id": "SWK",
+      "name": "Southwark",
+      "naptanId": "940GZZLUSWK",
+      "topologyId": "940GZZLUSWK",
+      "lat": 51.50427,
+      "lon": -0.105331,
+      "stepFreeStreetAccess": true
+    },
+    {
+      "id": "LNB",
+      "name": "London Bridge",
+      "naptanId": "940GZZLULNB",
+      "topologyId": "HUBLBG",
+      "lat": 51.505881,
+      "lon": -0.086807,
+      "stepFreeStreetAccess": true
+    }
+  ],
+  "lineNodes": [
+    {
+      "id": "VIC:victoria",
+      "stationId": "VIC",
+      "line": "victoria",
+      "platformIds": [
+        "HUBVIC-Plat03-NB-victoria",
+        "HUBVIC-Plat04-SB-victoria"
+      ]
+    },
+    {
+      "id": "VIC:district",
+      "stationId": "VIC",
+      "line": "district",
+      "platformIds": [
+        "HUBVIC-Plat01-WB-circle|district",
+        "HUBVIC-Plat02-EB-circle|district"
+      ]
+    },
+    {
+      "id": "GPK:victoria",
+      "stationId": "GPK",
+      "line": "victoria",
+      "platformIds": [
+        "940GZZLUGPK-Plat03-NB-victoria",
+        "940GZZLUGPK-Plat04-SB-victoria"
+      ]
+    },
+    {
+      "id": "GPK:jubilee",
+      "stationId": "GPK",
+      "line": "jubilee",
+      "platformIds": [
+        "940GZZLUGPK-Plat05-NB-jubilee",
+        "940GZZLUGPK-Plat06-SB-jubilee"
+      ]
+    },
+    {
+      "id": "SJP:district",
+      "stationId": "SJP",
+      "line": "district",
+      "platformIds": [
+        "940GZZLUSJP-Plat01-WB-circle|district",
+        "940GZZLUSJP-Plat02-EB-circle|district"
+      ]
+    },
+    {
+      "id": "WSM:district",
+      "stationId": "WSM",
+      "line": "district",
+      "platformIds": [
+        "HUBWSM-Plat01-WB-circle|district",
+        "HUBWSM-Plat02-EB-circle|district"
+      ]
+    },
+    {
+      "id": "WSM:jubilee",
+      "stationId": "WSM",
+      "line": "jubilee",
+      "platformIds": [
+        "HUBWSM-Plat03-EB-jubilee",
+        "HUBWSM-Plat04-WB-jubilee"
+      ]
+    },
+    {
+      "id": "WLO:jubilee",
+      "stationId": "WLO",
+      "line": "jubilee",
+      "platformIds": [
+        "HUBWAT-Plat05-WB-jubilee",
+        "HUBWAT-Plat06-EB-jubilee"
+      ]
+    },
+    {
+      "id": "SWK:jubilee",
+      "stationId": "SWK",
+      "line": "jubilee",
+      "platformIds": [
+        "940GZZLUSWK-Plat01-WB-jubilee",
+        "940GZZLUSWK-Plat02-EB-jubilee"
+      ]
+    },
+    {
+      "id": "LNB:jubilee",
+      "stationId": "LNB",
+      "line": "jubilee",
+      "platformIds": [
+        "HUBLBG-Plat03-WB-jubilee",
+        "HUBLBG-Plat04-EB-jubilee"
+      ]
+    }
+  ],
+  "streetNodes": [
+    {
+      "id": "VIC:street",
+      "stationId": "VIC",
+      "areaId": "HUBVIC-Outside"
+    },
+    {
+      "id": "GPK:street",
+      "stationId": "GPK",
+      "areaId": "940GZZLUGPK-Outside"
+    },
+    {
+      "id": "SJP:street",
+      "stationId": "SJP",
+      "areaId": "940GZZLUSJP-Outside"
+    },
+    {
+      "id": "WSM:street",
+      "stationId": "WSM",
+      "areaId": "HUBWSM-Outside"
+    },
+    {
+      "id": "WLO:street",
+      "stationId": "WLO",
+      "areaId": "HUBWAT-Outside"
+    },
+    {
+      "id": "SWK:street",
+      "stationId": "SWK",
+      "areaId": "940GZZLUSWK-Outside"
+    },
+    {
+      "id": "LNB:street",
+      "stationId": "LNB",
+      "areaId": "HUBLBG-Outside"
+    }
+  ],
+  "rides": [
+    {
+      "from": "VIC:victoria",
+      "to": "GPK:victoria",
+      "line": "victoria",
+      "minutes": 1
+    },
+    {
+      "from": "GPK:victoria",
+      "to": "VIC:victoria",
+      "line": "victoria",
+      "minutes": 1
+    },
+    {
+      "from": "VIC:district",
+      "to": "SJP:district",
+      "line": "district",
+      "minutes": 1
+    },
+    {
+      "from": "SJP:district",
+      "to": "VIC:district",
+      "line": "district",
+      "minutes": 1
+    },
+    {
+      "from": "SJP:district",
+      "to": "WSM:district",
+      "line": "district",
+      "minutes": 2
+    },
+    {
+      "from": "WSM:district",
+      "to": "SJP:district",
+      "line": "district",
+      "minutes": 2
+    },
+    {
+      "from": "GPK:jubilee",
+      "to": "WSM:jubilee",
+      "line": "jubilee",
+      "minutes": 2
+    },
+    {
+      "from": "WSM:jubilee",
+      "to": "GPK:jubilee",
+      "line": "jubilee",
+      "minutes": 2
+    },
+    {
+      "from": "WSM:jubilee",
+      "to": "WLO:jubilee",
+      "line": "jubilee",
+      "minutes": 2
+    },
+    {
+      "from": "WLO:jubilee",
+      "to": "WSM:jubilee",
+      "line": "jubilee",
+      "minutes": 2
+    },
+    {
+      "from": "WLO:jubilee",
+      "to": "SWK:jubilee",
+      "line": "jubilee",
+      "minutes": 1
+    },
+    {
+      "from": "SWK:jubilee",
+      "to": "WLO:jubilee",
+      "line": "jubilee",
+      "minutes": 1
+    },
+    {
+      "from": "SWK:jubilee",
+      "to": "LNB:jubilee",
+      "line": "jubilee",
+      "minutes": 2
+    },
+    {
+      "from": "LNB:jubilee",
+      "to": "SWK:jubilee",
+      "line": "jubilee",
+      "minutes": 2
+    }
+  ],
+  "transfers": [
+    {
+      "id": "VIC:street~VIC:victoria",
+      "stationId": "VIC",
+      "from": "VIC:street",
+      "to": "VIC:victoria",
+      "kind": "entrance",
+      "minutes": 8,
+      "fromAreas": [
+        "HUBVIC-Outside"
+      ],
+      "toAreas": [
+        "HUBVIC-Plat03-NB-victoria",
+        "HUBVIC-Plat04-SB-victoria"
+      ],
+      "liftsUsed": [
+        "HUBVIC-Lift-C3",
+        "HUBVIC-Lift-E5",
+        "HUBVIC-Lift-G7"
+      ],
+      "requiredLifts": [],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "VIC:victoria~VIC:street",
+      "stationId": "VIC",
+      "from": "VIC:victoria",
+      "to": "VIC:street",
+      "kind": "entrance",
+      "minutes": 8,
+      "fromAreas": [
+        "HUBVIC-Plat03-NB-victoria",
+        "HUBVIC-Plat04-SB-victoria"
+      ],
+      "toAreas": [
+        "HUBVIC-Outside"
+      ],
+      "liftsUsed": [
+        "HUBVIC-Lift-G7",
+        "HUBVIC-Lift-E5",
+        "HUBVIC-Lift-C3"
+      ],
+      "requiredLifts": [],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "VIC:street~VIC:district",
+      "stationId": "VIC",
+      "from": "VIC:street",
+      "to": "VIC:district",
+      "kind": "entrance",
+      "minutes": 12,
+      "fromAreas": [
+        "HUBVIC-Outside"
+      ],
+      "toAreas": [
+        "HUBVIC-Plat01-WB-circle|district",
+        "HUBVIC-Plat02-EB-circle|district"
+      ],
+      "liftsUsed": [
+        "HUBVIC-Lift-A1B2",
+        "HUBVIC-Lift-D4",
+        "HUBVIC-Lift-C3",
+        "HUBVIC-Lift-E5",
+        "HUBVIC-Lift-F6"
+      ],
+      "requiredLifts": [
+        "HUBVIC-Lift-D4",
+        "HUBVIC-Lift-F6"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "VIC:district~VIC:street",
+      "stationId": "VIC",
+      "from": "VIC:district",
+      "to": "VIC:street",
+      "kind": "entrance",
+      "minutes": 12,
+      "fromAreas": [
+        "HUBVIC-Plat01-WB-circle|district",
+        "HUBVIC-Plat02-EB-circle|district"
+      ],
+      "toAreas": [
+        "HUBVIC-Outside"
+      ],
+      "liftsUsed": [
+        "HUBVIC-Lift-D4",
+        "HUBVIC-Lift-A1B2",
+        "HUBVIC-Lift-F6",
+        "HUBVIC-Lift-G7",
+        "HUBVIC-Lift-E5",
+        "HUBVIC-Lift-C3"
+      ],
+      "requiredLifts": [
+        "HUBVIC-Lift-D4",
+        "HUBVIC-Lift-F6"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "VIC:victoria~VIC:district",
+      "stationId": "VIC",
+      "from": "VIC:victoria",
+      "to": "VIC:district",
+      "kind": "interchange",
+      "minutes": 9,
+      "fromAreas": [
+        "HUBVIC-Plat03-NB-victoria",
+        "HUBVIC-Plat04-SB-victoria"
+      ],
+      "toAreas": [
+        "HUBVIC-Plat01-WB-circle|district",
+        "HUBVIC-Plat02-EB-circle|district"
+      ],
+      "liftsUsed": [
+        "HUBVIC-Lift-F6",
+        "HUBVIC-Lift-D4"
+      ],
+      "requiredLifts": [
+        "HUBVIC-Lift-D4",
+        "HUBVIC-Lift-F6"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "VIC:district~VIC:victoria",
+      "stationId": "VIC",
+      "from": "VIC:district",
+      "to": "VIC:victoria",
+      "kind": "interchange",
+      "minutes": 9,
+      "fromAreas": [
+        "HUBVIC-Plat01-WB-circle|district",
+        "HUBVIC-Plat02-EB-circle|district"
+      ],
+      "toAreas": [
+        "HUBVIC-Plat03-NB-victoria",
+        "HUBVIC-Plat04-SB-victoria"
+      ],
+      "liftsUsed": [
+        "HUBVIC-Lift-D4",
+        "HUBVIC-Lift-F6"
+      ],
+      "requiredLifts": [
+        "HUBVIC-Lift-D4",
+        "HUBVIC-Lift-F6"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "GPK:street~GPK:victoria",
+      "stationId": "GPK",
+      "from": "GPK:street",
+      "to": "GPK:victoria",
+      "kind": "entrance",
+      "minutes": 6,
+      "fromAreas": [
+        "940GZZLUGPK-Outside"
+      ],
+      "toAreas": [
+        "940GZZLUGPK-Plat03-NB-victoria",
+        "940GZZLUGPK-Plat04-SB-victoria"
+      ],
+      "liftsUsed": [
+        "940GZZLUGPK-Lift-4",
+        "940GZZLUGPK-Lift-5"
+      ],
+      "requiredLifts": [],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "GPK:victoria~GPK:street",
+      "stationId": "GPK",
+      "from": "GPK:victoria",
+      "to": "GPK:street",
+      "kind": "entrance",
+      "minutes": 6,
+      "fromAreas": [
+        "940GZZLUGPK-Plat03-NB-victoria",
+        "940GZZLUGPK-Plat04-SB-victoria"
+      ],
+      "toAreas": [
+        "940GZZLUGPK-Outside"
+      ],
+      "liftsUsed": [
+        "940GZZLUGPK-Lift-5",
+        "940GZZLUGPK-Lift-4"
+      ],
+      "requiredLifts": [],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "GPK:street~GPK:jubilee",
+      "stationId": "GPK",
+      "from": "GPK:street",
+      "to": "GPK:jubilee",
+      "kind": "entrance",
+      "minutes": 10,
+      "fromAreas": [
+        "940GZZLUGPK-Outside"
+      ],
+      "toAreas": [
+        "940GZZLUGPK-Plat05-NB-jubilee",
+        "940GZZLUGPK-Plat06-SB-jubilee"
+      ],
+      "liftsUsed": [
+        "940GZZLUGPK-Lift-4",
+        "940GZZLUGPK-Lift-5",
+        "940GZZLUGPK-Lift-2"
+      ],
+      "requiredLifts": [
+        "940GZZLUGPK-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "GPK:jubilee~GPK:street",
+      "stationId": "GPK",
+      "from": "GPK:jubilee",
+      "to": "GPK:street",
+      "kind": "entrance",
+      "minutes": 10,
+      "fromAreas": [
+        "940GZZLUGPK-Plat05-NB-jubilee",
+        "940GZZLUGPK-Plat06-SB-jubilee"
+      ],
+      "toAreas": [
+        "940GZZLUGPK-Outside"
+      ],
+      "liftsUsed": [
+        "940GZZLUGPK-Lift-2",
+        "940GZZLUGPK-Lift-5",
+        "940GZZLUGPK-Lift-4"
+      ],
+      "requiredLifts": [
+        "940GZZLUGPK-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "GPK:victoria~GPK:jubilee",
+      "stationId": "GPK",
+      "from": "GPK:victoria",
+      "to": "GPK:jubilee",
+      "kind": "interchange",
+      "minutes": 12,
+      "fromAreas": [
+        "940GZZLUGPK-Plat03-NB-victoria",
+        "940GZZLUGPK-Plat04-SB-victoria"
+      ],
+      "toAreas": [
+        "940GZZLUGPK-Plat05-NB-jubilee",
+        "940GZZLUGPK-Plat06-SB-jubilee"
+      ],
+      "liftsUsed": [
+        "940GZZLUGPK-Lift-5",
+        "940GZZLUGPK-Lift-2"
+      ],
+      "requiredLifts": [
+        "940GZZLUGPK-Lift-2"
+      ],
+      "timeSource": "tfl-interchange-distance"
+    },
+    {
+      "id": "GPK:jubilee~GPK:victoria",
+      "stationId": "GPK",
+      "from": "GPK:jubilee",
+      "to": "GPK:victoria",
+      "kind": "interchange",
+      "minutes": 12,
+      "fromAreas": [
+        "940GZZLUGPK-Plat05-NB-jubilee",
+        "940GZZLUGPK-Plat06-SB-jubilee"
+      ],
+      "toAreas": [
+        "940GZZLUGPK-Plat03-NB-victoria",
+        "940GZZLUGPK-Plat04-SB-victoria"
+      ],
+      "liftsUsed": [
+        "940GZZLUGPK-Lift-2",
+        "940GZZLUGPK-Lift-5"
+      ],
+      "requiredLifts": [
+        "940GZZLUGPK-Lift-2"
+      ],
+      "timeSource": "tfl-interchange-distance"
+    },
+    {
+      "id": "WSM:street~WSM:district",
+      "stationId": "WSM",
+      "from": "WSM:street",
+      "to": "WSM:district",
+      "kind": "entrance",
+      "minutes": 6,
+      "fromAreas": [
+        "HUBWSM-Outside"
+      ],
+      "toAreas": [
+        "HUBWSM-Plat01-WB-circle|district",
+        "HUBWSM-Plat02-EB-circle|district"
+      ],
+      "liftsUsed": [
+        "HUBWSM-Lift-2",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-3"
+      ],
+      "requiredLifts": [
+        "HUBWSM-Lift-2",
+        "HUBWSM-Lift-3",
+        "HUBWSM-Lift-4"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "WSM:district~WSM:street",
+      "stationId": "WSM",
+      "from": "WSM:district",
+      "to": "WSM:street",
+      "kind": "entrance",
+      "minutes": 6,
+      "fromAreas": [
+        "HUBWSM-Plat01-WB-circle|district",
+        "HUBWSM-Plat02-EB-circle|district"
+      ],
+      "toAreas": [
+        "HUBWSM-Outside"
+      ],
+      "liftsUsed": [
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-2",
+        "HUBWSM-Lift-3"
+      ],
+      "requiredLifts": [
+        "HUBWSM-Lift-2",
+        "HUBWSM-Lift-3",
+        "HUBWSM-Lift-4"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "WSM:street~WSM:jubilee",
+      "stationId": "WSM",
+      "from": "WSM:street",
+      "to": "WSM:jubilee",
+      "kind": "entrance",
+      "minutes": 11,
+      "fromAreas": [
+        "HUBWSM-Outside"
+      ],
+      "toAreas": [
+        "HUBWSM-Plat03-EB-jubilee",
+        "HUBWSM-Plat04-WB-jubilee"
+      ],
+      "liftsUsed": [
+        "HUBWSM-Lift-2",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-5"
+      ],
+      "requiredLifts": [
+        "HUBWSM-Lift-2",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-5"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "WSM:jubilee~WSM:street",
+      "stationId": "WSM",
+      "from": "WSM:jubilee",
+      "to": "WSM:street",
+      "kind": "entrance",
+      "minutes": 11,
+      "fromAreas": [
+        "HUBWSM-Plat03-EB-jubilee",
+        "HUBWSM-Plat04-WB-jubilee"
+      ],
+      "toAreas": [
+        "HUBWSM-Outside"
+      ],
+      "liftsUsed": [
+        "HUBWSM-Lift-5",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-2"
+      ],
+      "requiredLifts": [
+        "HUBWSM-Lift-2",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-5"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "WSM:district~WSM:jubilee",
+      "stationId": "WSM",
+      "from": "WSM:district",
+      "to": "WSM:jubilee",
+      "kind": "interchange",
+      "minutes": 12,
+      "fromAreas": [
+        "HUBWSM-Plat01-WB-circle|district",
+        "HUBWSM-Plat02-EB-circle|district"
+      ],
+      "toAreas": [
+        "HUBWSM-Plat03-EB-jubilee",
+        "HUBWSM-Plat04-WB-jubilee"
+      ],
+      "liftsUsed": [
+        "HUBWSM-Lift-5",
+        "HUBWSM-Lift-3",
+        "HUBWSM-Lift-4"
+      ],
+      "requiredLifts": [
+        "HUBWSM-Lift-3",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-5"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "WSM:jubilee~WSM:district",
+      "stationId": "WSM",
+      "from": "WSM:jubilee",
+      "to": "WSM:district",
+      "kind": "interchange",
+      "minutes": 12,
+      "fromAreas": [
+        "HUBWSM-Plat03-EB-jubilee",
+        "HUBWSM-Plat04-WB-jubilee"
+      ],
+      "toAreas": [
+        "HUBWSM-Plat01-WB-circle|district",
+        "HUBWSM-Plat02-EB-circle|district"
+      ],
+      "liftsUsed": [
+        "HUBWSM-Lift-5",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-3"
+      ],
+      "requiredLifts": [
+        "HUBWSM-Lift-3",
+        "HUBWSM-Lift-4",
+        "HUBWSM-Lift-5"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "WLO:street~WLO:jubilee",
+      "stationId": "WLO",
+      "from": "WLO:street",
+      "to": "WLO:jubilee",
+      "kind": "entrance",
+      "minutes": 4,
+      "fromAreas": [
+        "HUBWAT-Outside"
+      ],
+      "toAreas": [
+        "HUBWAT-Plat05-WB-jubilee",
+        "HUBWAT-Plat06-EB-jubilee"
+      ],
+      "liftsUsed": [
+        "HUBWAT-Lift-2"
+      ],
+      "requiredLifts": [
+        "HUBWAT-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "WLO:jubilee~WLO:street",
+      "stationId": "WLO",
+      "from": "WLO:jubilee",
+      "to": "WLO:street",
+      "kind": "entrance",
+      "minutes": 4,
+      "fromAreas": [
+        "HUBWAT-Plat05-WB-jubilee",
+        "HUBWAT-Plat06-EB-jubilee"
+      ],
+      "toAreas": [
+        "HUBWAT-Outside"
+      ],
+      "liftsUsed": [
+        "HUBWAT-Lift-2"
+      ],
+      "requiredLifts": [
+        "HUBWAT-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "SWK:street~SWK:jubilee",
+      "stationId": "SWK",
+      "from": "SWK:street",
+      "to": "SWK:jubilee",
+      "kind": "entrance",
+      "minutes": 6,
+      "fromAreas": [
+        "940GZZLUSWK-Outside"
+      ],
+      "toAreas": [
+        "940GZZLUSWK-Plat01-WB-jubilee",
+        "940GZZLUSWK-Plat02-EB-jubilee"
+      ],
+      "liftsUsed": [
+        "940GZZLUSWK-Lift-2",
+        "940GZZLUSWK-Lift-1"
+      ],
+      "requiredLifts": [
+        "940GZZLUSWK-Lift-1",
+        "940GZZLUSWK-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "SWK:jubilee~SWK:street",
+      "stationId": "SWK",
+      "from": "SWK:jubilee",
+      "to": "SWK:street",
+      "kind": "entrance",
+      "minutes": 6,
+      "fromAreas": [
+        "940GZZLUSWK-Plat01-WB-jubilee",
+        "940GZZLUSWK-Plat02-EB-jubilee"
+      ],
+      "toAreas": [
+        "940GZZLUSWK-Outside"
+      ],
+      "liftsUsed": [
+        "940GZZLUSWK-Lift-1",
+        "940GZZLUSWK-Lift-2"
+      ],
+      "requiredLifts": [
+        "940GZZLUSWK-Lift-1",
+        "940GZZLUSWK-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "LNB:street~LNB:jubilee",
+      "stationId": "LNB",
+      "from": "LNB:street",
+      "to": "LNB:jubilee",
+      "kind": "entrance",
+      "minutes": 7,
+      "fromAreas": [
+        "HUBLBG-Outside"
+      ],
+      "toAreas": [
+        "HUBLBG-Plat03-WB-jubilee",
+        "HUBLBG-Plat04-EB-jubilee"
+      ],
+      "liftsUsed": [
+        "HUBLBG-Lift-2"
+      ],
+      "requiredLifts": [
+        "HUBLBG-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    },
+    {
+      "id": "LNB:jubilee~LNB:street",
+      "stationId": "LNB",
+      "from": "LNB:jubilee",
+      "to": "LNB:street",
+      "kind": "entrance",
+      "minutes": 7,
+      "fromAreas": [
+        "HUBLBG-Plat03-WB-jubilee",
+        "HUBLBG-Plat04-EB-jubilee"
+      ],
+      "toAreas": [
+        "HUBLBG-Outside"
+      ],
+      "liftsUsed": [
+        "HUBLBG-Lift-2"
+      ],
+      "requiredLifts": [
+        "HUBLBG-Lift-2"
+      ],
+      "timeSource": "topology-geometry"
+    }
+  ],
+  "lifts": [
+    {
+      "liftUniqueId": "940GZZLUGPK-Lift-1",
+      "stationId": "GPK",
+      "friendlyName": "Lift 1",
+      "areas": [
+        "940GZZLUGPK-1000093-LoCon-2",
+        "940GZZLUGPK-1000093-PicEB-1",
+        "940GZZLUGPK-1000093-PicWB-15"
+      ]
+    },
+    {
+      "liftUniqueId": "940GZZLUGPK-Lift-2",
+      "stationId": "GPK",
+      "friendlyName": "Lift 2",
+      "areas": [
+        "940GZZLUGPK-1000093-LoCon-2",
+        "940GZZLUGPK-1000093-JUB-19"
+      ]
+    },
+    {
+      "liftUniqueId": "940GZZLUGPK-Lift-4",
+      "stationId": "GPK",
+      "friendlyName": "Lift 4",
+      "areas": [
+        "940GZZLUGPK-1000093-D-P-S-4",
+        "940GZZLUGPK-1000093-BookH-5"
+      ]
+    },
+    {
+      "liftUniqueId": "940GZZLUGPK-Lift-5",
+      "stationId": "GPK",
+      "friendlyName": "Lift 5",
+      "areas": [
+        "940GZZLUGPK-1000093-BookH-5",
+        "940GZZLUGPK-1000093-VIC-18",
+        "940GZZLUGPK-1000093-LoCon-2"
+      ]
+    },
+    {
+      "liftUniqueId": "940GZZLUGPK-Lift-6",
+      "stationId": "GPK",
+      "friendlyName": "Lift 6",
+      "areas": [
+        "940GZZLUGPK-1000093-BookH-5",
+        "940GZZLUGPK-1000093-VIC-18",
+        "940GZZLUGPK-1000093-LoCon-2"
+      ]
+    },
+    {
+      "liftUniqueId": "940GZZLUSWK-Lift-1",
+      "stationId": "SWK",
+      "friendlyName": "Lift 1",
+      "areas": [
+        "940GZZLUSWK-1000215-BookH-1",
+        "940GZZLUSWK-1000215-JubWB-9",
+        "940GZZLUSWK-1000215-Jubil-3"
+      ]
+    },
+    {
+      "liftUniqueId": "940GZZLUSWK-Lift-2",
+      "stationId": "SWK",
+      "friendlyName": "Lift 2",
+      "areas": [
+        "940GZZLUSWK-1000215-A-CUT-2",
+        "940GZZLUSWK-1000215-BookH-1"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBLBG-Lift-2",
+      "stationId": "LNB",
+      "friendlyName": "Lift 2",
+      "areas": [
+        "HUBLBG-1000139-BookJ-3",
+        "HUBLBG-1000139-JubEB-2",
+        "HUBLBG-1000139-JubWB-27"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBLBG-Lift-3",
+      "stationId": "LNB",
+      "friendlyName": "Lift 3",
+      "areas": [
+        "HUBLBG-1000139-BOROU-4",
+        "HUBLBG-1000139-BookN-8"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBLBG-Lift-4",
+      "stationId": "LNB",
+      "friendlyName": "Lift 4",
+      "areas": [
+        "HUBLBG-1000139-BookN-8",
+        "HUBLBG-1000139-NorNB-9",
+        "HUBLBG-1000139-NorSB-28"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBLBG-Lift-5",
+      "stationId": "LNB",
+      "friendlyName": "Lift 5",
+      "areas": [
+        "HUBLBG-1000139-RLY-16",
+        "HUBLBG-1000139-RPL45-22"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBLBG-Lift-6",
+      "stationId": "LNB",
+      "friendlyName": "Lift 6",
+      "areas": [
+        "HUBLBG-1000139-RLY-16",
+        "HUBLBG-1000139-UpFlr-18"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBVIC-Lift-A1B2",
+      "stationId": "VIC",
+      "friendlyName": "Lift A1B2",
+      "areas": [
+        "HUBVIC-1000248-D-VIC-9",
+        "HUBVIC-1000248-BookV-12"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBVIC-Lift-C3",
+      "stationId": "VIC",
+      "friendlyName": "Lift C3",
+      "areas": [
+        "HUBVIC-1000248-CARD-71",
+        "HUBVIC-1000248-BookN-72"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBVIC-Lift-D4",
+      "stationId": "VIC",
+      "friendlyName": "Lift D4",
+      "areas": [
+        "HUBVIC-1000248-BookV-12",
+        "HUBVIC-1000248-DisW-74",
+        "HUBVIC-1000248-SInt-76"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBVIC-Lift-E5",
+      "stationId": "VIC",
+      "friendlyName": "Lift E5",
+      "areas": [
+        "HUBVIC-1000248-BookN-72",
+        "HUBVIC-1000248-NInt-73"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBVIC-Lift-F6",
+      "stationId": "VIC",
+      "friendlyName": "Lift F6",
+      "areas": [
+        "HUBVIC-1000248-VicNB-4",
+        "HUBVIC-1000248-VicSB-5",
+        "HUBVIC-1000248-DVLnk-16",
+        "HUBVIC-1000248-DisE-2"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBVIC-Lift-G7",
+      "stationId": "VIC",
+      "friendlyName": "Lift G7",
+      "areas": [
+        "HUBVIC-1000248-NInt-73",
+        "HUBVIC-1000248-VicNB-4",
+        "HUBVIC-1000248-VicSB-5"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWAT-Lift-1",
+      "stationId": "WLO",
+      "friendlyName": "Lift 1 ",
+      "areas": [
+        "HUBWAT-1000254-WCArr-20",
+        "HUBWAT-1000254-BookM-18"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWAT-Lift-2",
+      "stationId": "WLO",
+      "friendlyName": "Lift 2",
+      "areas": [
+        "HUBWAT-1000254-BookJ-1",
+        "HUBWAT-1000254-IntJu-19",
+        "HUBWAT-1000254-JubEB-2",
+        "HUBWAT-1000254-JubWB-25"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWAT-Lift-3",
+      "stationId": "WLO",
+      "friendlyName": "Lift 3",
+      "areas": [
+        "HUBWAT-1000254-BookM-18",
+        "HUBWAT-1000254-NRDP-22",
+        "HUBWAT-1000254-TSC-23",
+        "HUBWAT-1000254-RPL-14"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWAT-Lift-4",
+      "stationId": "WLO",
+      "friendlyName": "Lift 4",
+      "areas": [
+        "HUBWAT-1000254-B-WOR-13",
+        "HUBWAT-1000254-RPL-14"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWSM-Lift-2",
+      "stationId": "WSM",
+      "friendlyName": "Lift 2",
+      "areas": [
+        "HUBWSM-1000266-BookH-4",
+        "HUBWSM-1000266-A-BRI-2"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWSM-Lift-3",
+      "stationId": "WSM",
+      "friendlyName": "Lift 3",
+      "areas": [
+        "HUBWSM-1000266-BookH-4",
+        "HUBWSM-1000266-DisEB-3"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWSM-Lift-4",
+      "stationId": "WSM",
+      "friendlyName": "Lift 4",
+      "areas": [
+        "HUBWSM-1000266-BookH-4",
+        "HUBWSM-1000266-DisWB-5"
+      ]
+    },
+    {
+      "liftUniqueId": "HUBWSM-Lift-5",
+      "stationId": "WSM",
+      "friendlyName": "Lift 5",
+      "areas": [
+        "HUBWSM-1000266-DisWB-5",
+        "HUBWSM-1000266-JubEB-6",
+        "HUBWSM-1000266-JubWB-11"
+      ]
+    }
+  ],
+  "areaEdges": [
+    {
+      "from": "940GZZLUGPK-1000093-A-P-N-10",
+      "to": "940GZZLUGPK-1000093-Bus-14",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-B-P-S-8",
+      "to": "940GZZLUGPK-1000093-Bus-14",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-Bus-14",
+      "to": "940GZZLUGPK-1000093-A-P-N-10",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-Bus-14",
+      "to": "940GZZLUGPK-1000093-B-P-S-8",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-Bus-14",
+      "to": "940GZZLUGPK-1000093-C-GRE-12",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-Bus-14",
+      "to": "940GZZLUGPK-1000093-D-P-S-4",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-Bus-14",
+      "to": "940GZZLUGPK-1000093-E-STR-11",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-C-GRE-12",
+      "to": "940GZZLUGPK-1000093-Bus-14",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-D-P-S-4",
+      "to": "940GZZLUGPK-1000093-Bus-14",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-E-STR-11",
+      "to": "940GZZLUGPK-1000093-Bus-14",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-JUB-19",
+      "to": "940GZZLUGPK-1000093-JubEB-9",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-JUB-19",
+      "to": "940GZZLUGPK-1000093-JubWB-3",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-JubEB-9",
+      "to": "940GZZLUGPK-1000093-JUB-19",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-JubWB-3",
+      "to": "940GZZLUGPK-1000093-JUB-19",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicEB-1",
+      "to": "940GZZLUGPK-1000093-PicWB-15",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicWB-15",
+      "to": "940GZZLUGPK-1000093-PicEB-1",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-1000093-VicNB-13",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-1000093-VicSB-7",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VicNB-13",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VicSB-7",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-B-TOT-3",
+      "to": "940GZZLUSJP-1000221-BusVS-11",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-BookP-6",
+      "to": "940GZZLUSJP-1000221-D-PAL-4",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-BusVS-11",
+      "to": "940GZZLUSJP-1000221-B-TOT-3",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-BusVS-11",
+      "to": "940GZZLUSJP-1000221-C-ERM-8",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-BusVS-11",
+      "to": "940GZZLUSJP-1000221-D-PAL-4",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-C-ERM-8",
+      "to": "940GZZLUSJP-1000221-BusVS-11",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-D-PAL-4",
+      "to": "940GZZLUSJP-1000221-BookP-6",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-D-PAL-4",
+      "to": "940GZZLUSJP-1000221-BusVS-11",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-A-CUT-2",
+      "to": "940GZZLUSWK-1000215-Bus-7",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-Bus-7",
+      "to": "940GZZLUSWK-1000215-A-CUT-2",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-Jubil-3",
+      "to": "940GZZLUSWK-1000215-JubWB-9",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-JubWB-9",
+      "to": "940GZZLUSWK-1000215-Jubil-3",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-A-DUK-6",
+      "to": "HUBLBG-1000139-BookJ-3",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-A-DUK-6",
+      "to": "HUBLBG-1000139-BUS S-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-A-DUK-6",
+      "to": "HUBLBG-1000139-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-A-DUK-6",
+      "to": "HUBLBG-1000139-DSB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BookJ-3",
+      "to": "HUBLBG-1000139-A-DUK-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BookJ-3",
+      "to": "HUBLBG-1000139-D-RAI-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BookJ-3",
+      "to": "HUBLBG-1000139-SStTo-19",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BOROU-4",
+      "to": "HUBLBG-1000139-BUS S-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BOROU-4",
+      "to": "HUBLBG-1000139-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BOROU-4",
+      "to": "HUBLBG-1000139-DSB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BUS S-7",
+      "to": "HUBLBG-1000139-A-DUK-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BUS S-7",
+      "to": "HUBLBG-1000139-BOROU-4",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BUS S-7",
+      "to": "HUBLBG-1000139-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BUS S-7",
+      "to": "HUBLBG-1000139-D-RAI-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BUS S-7",
+      "to": "HUBLBG-1000139-DSB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BUS S-7",
+      "to": "HUBLBG-1000139-EntR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-Bus-1",
+      "to": "HUBLBG-1000139-A-DUK-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-Bus-1",
+      "to": "HUBLBG-1000139-BOROU-4",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-Bus-1",
+      "to": "HUBLBG-1000139-BUS S-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-Bus-1",
+      "to": "HUBLBG-1000139-D-RAI-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-Bus-1",
+      "to": "HUBLBG-1000139-DSB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-Bus-1",
+      "to": "HUBLBG-1000139-EntR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-D-RAI-5",
+      "to": "HUBLBG-1000139-BookJ-3",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-D-RAI-5",
+      "to": "HUBLBG-1000139-BUS S-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-D-RAI-5",
+      "to": "HUBLBG-1000139-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-D-RAI-5",
+      "to": "HUBLBG-1000139-DSB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-DSB-15",
+      "to": "HUBLBG-1000139-A-DUK-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-DSB-15",
+      "to": "HUBLBG-1000139-BOROU-4",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-DSB-15",
+      "to": "HUBLBG-1000139-BUS S-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-DSB-15",
+      "to": "HUBLBG-1000139-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-DSB-15",
+      "to": "HUBLBG-1000139-D-RAI-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-EntR-13",
+      "to": "HUBLBG-1000139-BUS S-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-EntR-13",
+      "to": "HUBLBG-1000139-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-EntR-13",
+      "to": "HUBLBG-1000139-SStTo-19",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-JubEB-2",
+      "to": "HUBLBG-1000139-JubWB-27",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-JubWB-27",
+      "to": "HUBLBG-1000139-JubEB-2",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-NorNB-9",
+      "to": "HUBLBG-1000139-NorSB-28",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-NorSB-28",
+      "to": "HUBLBG-1000139-NorNB-9",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RLY-16",
+      "to": "HUBLBG-1000139-SStTh-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RLY-16",
+      "to": "HUBLBG-1000139-SStTo-19",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RPL-T-11",
+      "to": "HUBLBG-1000139-UpFlr-18",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RPL10-24",
+      "to": "HUBLBG-1000139-UpFlr-18",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RPL13-25",
+      "to": "HUBLBG-1000139-UpFlr-18",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RPL15-26",
+      "to": "HUBLBG-1000139-UpFlr-18",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-SStTh-17",
+      "to": "HUBLBG-1000139-RLY-16",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-SStTo-19",
+      "to": "HUBLBG-1000139-BookJ-3",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-SStTo-19",
+      "to": "HUBLBG-1000139-EntR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-SStTo-19",
+      "to": "HUBLBG-1000139-RLY-16",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-UpFlr-18",
+      "to": "HUBLBG-1000139-RPL-T-11",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-UpFlr-18",
+      "to": "HUBLBG-1000139-RPL10-24",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-UpFlr-18",
+      "to": "HUBLBG-1000139-RPL13-25",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-UpFlr-18",
+      "to": "HUBLBG-1000139-RPL15-26",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-A-VIC-10",
+      "to": "HUBVIC-1000248-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-A-VIC-10",
+      "to": "HUBVIC-1000248-BusJ-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-A-VIC-10",
+      "to": "HUBVIC-1000248-BusL-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-B-VIS-6",
+      "to": "HUBVIC-1000248-BusJ-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-B-VIS-6",
+      "to": "HUBVIC-1000248-BusL-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BriPl-19",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BriPl-19",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-Bus-1",
+      "to": "HUBVIC-1000248-A-VIC-10",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-Bus-1",
+      "to": "HUBVIC-1000248-BusJ-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-Bus-1",
+      "to": "HUBVIC-1000248-BusL-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-Bus-1",
+      "to": "HUBVIC-1000248-C-TER-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-Bus-1",
+      "to": "HUBVIC-1000248-D-VIC-9",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusJ-14",
+      "to": "HUBVIC-1000248-A-VIC-10",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusJ-14",
+      "to": "HUBVIC-1000248-B-VIS-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusJ-14",
+      "to": "HUBVIC-1000248-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusJ-14",
+      "to": "HUBVIC-1000248-BusL-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusJ-14",
+      "to": "HUBVIC-1000248-C-TER-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusJ-14",
+      "to": "HUBVIC-1000248-D-VIC-9",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusL-15",
+      "to": "HUBVIC-1000248-A-VIC-10",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusL-15",
+      "to": "HUBVIC-1000248-B-VIS-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusL-15",
+      "to": "HUBVIC-1000248-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusL-15",
+      "to": "HUBVIC-1000248-BusJ-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusL-15",
+      "to": "HUBVIC-1000248-C-TER-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-BusL-15",
+      "to": "HUBVIC-1000248-D-VIC-9",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-C-TER-7",
+      "to": "HUBVIC-1000248-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-C-TER-7",
+      "to": "HUBVIC-1000248-BusJ-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-C-TER-7",
+      "to": "HUBVIC-1000248-BusL-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-C-TER-7",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-C-TER-7",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-D-VIC-9",
+      "to": "HUBVIC-1000248-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-D-VIC-9",
+      "to": "HUBVIC-1000248-BusJ-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-D-VIC-9",
+      "to": "HUBVIC-1000248-BusL-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-DVLnk-16",
+      "to": "HUBVIC-1000248-NInt-73",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-DVLnk-16",
+      "to": "HUBVIC-1000248-SInt-76",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-EccBr-20",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-EccBr-20",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-NInt-73",
+      "to": "HUBVIC-1000248-DVLnk-16",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-NInt-73",
+      "to": "HUBVIC-1000248-SInt-76",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-1000248-BriPl-19",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-1000248-C-TER-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-1000248-EccBr-20",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-1000248-BriPl-19",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-1000248-C-TER-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-1000248-EccBr-20",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-SInt-76",
+      "to": "HUBVIC-1000248-DVLnk-16",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-SInt-76",
+      "to": "HUBVIC-1000248-NInt-73",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-A-YOR-7",
+      "to": "HUBWAT-1000254-BookB-10",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-A-YOR-7",
+      "to": "HUBWAT-1000254-BusB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-A-YOR-7",
+      "to": "HUBWAT-1000254-BusD-16",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-A-YOR-7",
+      "to": "HUBWAT-1000254-BusHT-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-B-WOR-13",
+      "to": "HUBWAT-1000254-BookJ-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-B-WOR-13",
+      "to": "HUBWAT-1000254-BusB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-B-WOR-13",
+      "to": "HUBWAT-1000254-BusD-16",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-B-WOR-13",
+      "to": "HUBWAT-1000254-BusHT-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BookB-10",
+      "to": "HUBWAT-1000254-A-YOR-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BookJ-1",
+      "to": "HUBWAT-1000254-B-WOR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BookM-18",
+      "to": "HUBWAT-1000254-NRDP-22",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-Bus-11",
+      "to": "HUBWAT-1000254-WATER-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusB-15",
+      "to": "HUBWAT-1000254-A-YOR-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusB-15",
+      "to": "HUBWAT-1000254-B-WOR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusB-15",
+      "to": "HUBWAT-1000254-BusHT-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusD-16",
+      "to": "HUBWAT-1000254-A-YOR-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusD-16",
+      "to": "HUBWAT-1000254-B-WOR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusD-16",
+      "to": "HUBWAT-1000254-BusHT-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusHT-17",
+      "to": "HUBWAT-1000254-A-YOR-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusHT-17",
+      "to": "HUBWAT-1000254-B-WOR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusHT-17",
+      "to": "HUBWAT-1000254-BusB-15",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BusHT-17",
+      "to": "HUBWAT-1000254-BusD-16",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-C-WBR-71",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-E-TEN-73",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-F-SAP-74",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-G-CUR-26",
+      "to": "HUBWAT-1000254-TSC-23",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-IntJu-19",
+      "to": "HUBWAT-1000254-LoCon-12",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-JubEB-2",
+      "to": "HUBWAT-1000254-JubWB-25",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-JubWB-25",
+      "to": "HUBWAT-1000254-JubEB-2",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-LoCon-12",
+      "to": "HUBWAT-1000254-IntJu-19",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-NorNB-5",
+      "to": "HUBWAT-1000254-NorSB-24",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-NorSB-24",
+      "to": "HUBWAT-1000254-NorNB-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-NRDP-22",
+      "to": "HUBWAT-1000254-BookM-18",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-C-WBR-71",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-E-TEN-73",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-F-SAP-74",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-WATER-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-TSC-23",
+      "to": "HUBWAT-1000254-G-CUR-26",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-WATER-6",
+      "to": "HUBWAT-1000254-Bus-11",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-WATER-6",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-A-BRI-2",
+      "to": "HUBWSM-1000266-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-Bus-1",
+      "to": "HUBWSM-1000266-A-BRI-2",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-Bus-1",
+      "to": "HUBWSM-1000266-E-WEP-10",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-Bus-1",
+      "to": "HUBWSM-1000266-F-WES-7",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-Bus-1",
+      "to": "HUBWSM-1000266-G1-PW-9",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-Bus-1",
+      "to": "HUBWSM-1000266-G2-PE-8",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-E-WEP-10",
+      "to": "HUBWSM-1000266-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-F-WES-7",
+      "to": "HUBWSM-1000266-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-G1-PW-9",
+      "to": "HUBWSM-1000266-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-G2-PE-8",
+      "to": "HUBWSM-1000266-Bus-1",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-D-P-S-4",
+      "to": "940GZZLUGPK-Outside",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-JUB-19",
+      "to": "940GZZLUGPK-Plat05-NB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-JUB-19",
+      "to": "940GZZLUGPK-Plat06-SB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicWB-15",
+      "to": "940GZZLUGPK-Plat01-WB-piccadilly",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicEB-1",
+      "to": "940GZZLUGPK-Plat02-EB-piccadilly",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-Plat03-NB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-Plat04-SB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Outside",
+      "to": "940GZZLUGPK-1000093-D-P-S-4",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat01-WB-piccadilly",
+      "to": "940GZZLUGPK-1000093-PicWB-15",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat01-WB-piccadilly",
+      "to": "940GZZLUGPK-Plat02-EB-piccadilly",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat02-EB-piccadilly",
+      "to": "940GZZLUGPK-1000093-PicEB-1",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat02-EB-piccadilly",
+      "to": "940GZZLUGPK-Plat01-WB-piccadilly",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat03-NB-victoria",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat03-NB-victoria",
+      "to": "940GZZLUGPK-Plat04-SB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat04-SB-victoria",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat04-SB-victoria",
+      "to": "940GZZLUGPK-Plat03-NB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat05-NB-jubilee",
+      "to": "940GZZLUGPK-1000093-JUB-19",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat05-NB-jubilee",
+      "to": "940GZZLUGPK-Plat06-SB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat06-SB-jubilee",
+      "to": "940GZZLUGPK-1000093-JUB-19",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-Plat06-SB-jubilee",
+      "to": "940GZZLUGPK-Plat05-NB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-A-CUT-2",
+      "to": "940GZZLUSWK-Outside",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-Jubil-3",
+      "to": "940GZZLUSWK-Plat01-WB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-Jubil-3",
+      "to": "940GZZLUSWK-Plat02-EB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-JubWB-9",
+      "to": "940GZZLUSWK-Plat01-WB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-JubWB-9",
+      "to": "940GZZLUSWK-Plat02-EB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-Outside",
+      "to": "940GZZLUSWK-1000215-A-CUT-2",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-Plat01-WB-jubilee",
+      "to": "940GZZLUSWK-1000215-Jubil-3",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-Plat01-WB-jubilee",
+      "to": "940GZZLUSWK-1000215-JubWB-9",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-Plat01-WB-jubilee",
+      "to": "940GZZLUSWK-Plat02-EB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-Plat02-EB-jubilee",
+      "to": "940GZZLUSWK-1000215-Jubil-3",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-Plat02-EB-jubilee",
+      "to": "940GZZLUSWK-1000215-JubWB-9",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUSWK-Plat02-EB-jubilee",
+      "to": "940GZZLUSWK-Plat01-WB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-A-DUK-6",
+      "to": "HUBLBG-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-D-RAI-5",
+      "to": "HUBLBG-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-EntR-13",
+      "to": "HUBLBG-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-BOROU-4",
+      "to": "HUBLBG-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-JubWB-27",
+      "to": "HUBLBG-Plat03-WB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-JubEB-2",
+      "to": "HUBLBG-Plat04-EB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-NorNB-9",
+      "to": "HUBLBG-Plat01-NB-northern",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-NorSB-28",
+      "to": "HUBLBG-Plat02-SB-northern",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-SStTh-17",
+      "to": "HUBLBG-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-SStTo-19",
+      "to": "HUBLBG-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Outside",
+      "to": "HUBLBG-1000139-SStTh-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Outside",
+      "to": "HUBLBG-1000139-SStTo-19",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Outside",
+      "to": "HUBLBG-1000139-A-DUK-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Outside",
+      "to": "HUBLBG-1000139-D-RAI-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Outside",
+      "to": "HUBLBG-1000139-EntR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Outside",
+      "to": "HUBLBG-1000139-BOROU-4",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Plat01-NB-northern",
+      "to": "HUBLBG-1000139-NorNB-9",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Plat02-SB-northern",
+      "to": "HUBLBG-1000139-NorSB-28",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Plat03-WB-jubilee",
+      "to": "HUBLBG-1000139-JubWB-27",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Plat04-EB-jubilee",
+      "to": "HUBLBG-1000139-JubEB-2",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Plat04-SB-national-rail",
+      "to": "HUBLBG-1000139-RPL45-22",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-Plat05-NB-national-rail",
+      "to": "HUBLBG-1000139-RPL45-22",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RPL45-22",
+      "to": "HUBLBG-Plat04-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBLBG-1000139-RPL45-22",
+      "to": "HUBLBG-Plat05-NB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-CARD-71",
+      "to": "HUBVIC-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-DisE-2",
+      "to": "HUBVIC-Plat02-EB-circle|district",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-DisW-74",
+      "to": "HUBVIC-Plat01-WB-circle|district",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-D-VIC-9",
+      "to": "HUBVIC-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-VicNB-4",
+      "to": "HUBVIC-Plat03-NB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-VicNB-4",
+      "to": "HUBVIC-Plat04-SB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-VicSB-5",
+      "to": "HUBVIC-Plat03-NB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-VicSB-5",
+      "to": "HUBVIC-Plat04-SB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Outside",
+      "to": "HUBVIC-1000248-CARD-71",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Outside",
+      "to": "HUBVIC-1000248-D-VIC-9",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat01-WB-circle|district",
+      "to": "HUBVIC-1000248-DisW-74",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat02-EB-circle|district",
+      "to": "HUBVIC-1000248-DisE-2",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat03-NB-victoria",
+      "to": "HUBVIC-1000248-VicNB-4",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat03-NB-victoria",
+      "to": "HUBVIC-1000248-VicSB-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat03-NB-victoria",
+      "to": "HUBVIC-Plat04-SB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat04-SB-victoria",
+      "to": "HUBVIC-1000248-VicNB-4",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat04-SB-victoria",
+      "to": "HUBVIC-1000248-VicSB-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat04-SB-victoria",
+      "to": "HUBVIC-Plat03-NB-victoria",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat01-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat02-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat03-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat04-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat05-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat06-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat07-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat08-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-D-17",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat09-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat10-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat11-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat12-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat13-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat14-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat15-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat16-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat17-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat18-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-Plat19-SB-national-rail",
+      "to": "HUBVIC-1000248-RPL-B-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat01-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat02-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat03-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat04-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat05-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat06-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat07-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-D-17",
+      "to": "HUBVIC-Plat08-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat09-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat10-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat11-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat12-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat13-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat14-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat15-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat16-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat17-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat18-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBVIC-1000248-RPL-B-13",
+      "to": "HUBVIC-Plat19-SB-national-rail",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-JubWB-25",
+      "to": "HUBWAT-Plat05-WB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-JubEB-2",
+      "to": "HUBWAT-Plat06-EB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-Plat05-WB-jubilee",
+      "to": "HUBWAT-1000254-JubWB-25",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-Plat05-WB-jubilee",
+      "to": "HUBWAT-Plat06-EB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-Plat06-EB-jubilee",
+      "to": "HUBWAT-1000254-JubEB-2",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-Plat06-EB-jubilee",
+      "to": "HUBWAT-Plat05-WB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-B-WOR-13",
+      "to": "HUBWAT-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-BookJ-1",
+      "to": "HUBWAT-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-Outside",
+      "to": "HUBWAT-1000254-BookJ-1",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-Outside",
+      "to": "HUBWAT-1000254-B-WOR-13",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-1000254-WCArr-20",
+      "to": "HUBWAT-Plat26-WB-waterloo-city",
+      "via": "level"
+    },
+    {
+      "from": "HUBWAT-Plat26-WB-waterloo-city",
+      "to": "HUBWAT-1000254-WCArr-20",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-A-BRI-2",
+      "to": "HUBWSM-Outside",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-DisEB-3",
+      "to": "HUBWSM-Plat02-EB-circle|district",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-DisWB-5",
+      "to": "HUBWSM-Plat01-WB-circle|district",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-JubEB-6",
+      "to": "HUBWSM-Plat03-EB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-1000266-JubWB-11",
+      "to": "HUBWSM-Plat04-WB-jubilee",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-Outside",
+      "to": "HUBWSM-1000266-A-BRI-2",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-Plat01-WB-circle|district",
+      "to": "HUBWSM-1000266-DisWB-5",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-Plat02-EB-circle|district",
+      "to": "HUBWSM-1000266-DisEB-3",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-Plat03-EB-jubilee",
+      "to": "HUBWSM-1000266-JubEB-6",
+      "via": "level"
+    },
+    {
+      "from": "HUBWSM-Plat04-WB-jubilee",
+      "to": "HUBWSM-1000266-JubWB-11",
+      "via": "level"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-BookH-5",
+      "to": "940GZZLUGPK-1000093-C-GRE-12",
+      "via": "ramp"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-C-GRE-12",
+      "to": "940GZZLUGPK-1000093-BookH-5",
+      "via": "ramp"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-A-PET-7",
+      "to": "940GZZLUSJP-1000221-BookT-5",
+      "via": "ramp"
+    },
+    {
+      "from": "940GZZLUSJP-1000221-BookT-5",
+      "to": "940GZZLUSJP-1000221-A-PET-7",
+      "via": "ramp"
+    },
+    {
+      "from": "HUBVIC-1000248-BookC-11",
+      "to": "HUBVIC-1000248-BookV-12",
+      "via": "ramp"
+    },
+    {
+      "from": "HUBVIC-1000248-BookV-12",
+      "to": "HUBVIC-1000248-BookC-11",
+      "via": "ramp"
+    },
+    {
+      "from": "HUBWAT-1000254-BakSB-3",
+      "to": "HUBWAT-1000254-LoCon-12",
+      "via": "ramp"
+    },
+    {
+      "from": "HUBWAT-1000254-BookM-18",
+      "to": "HUBWAT-1000254-WCDep-9",
+      "via": "ramp"
+    },
+    {
+      "from": "HUBWAT-1000254-LoCon-12",
+      "to": "HUBWAT-1000254-BakSB-3",
+      "via": "ramp"
+    },
+    {
+      "from": "HUBWAT-1000254-WCDep-9",
+      "to": "HUBWAT-1000254-BookM-18",
+      "via": "ramp"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-LoCon-2",
+      "to": "940GZZLUGPK-1000093-PicEB-1",
+      "via": "940GZZLUGPK-Lift-1"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-LoCon-2",
+      "to": "940GZZLUGPK-1000093-PicWB-15",
+      "via": "940GZZLUGPK-Lift-1"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicEB-1",
+      "to": "940GZZLUGPK-1000093-LoCon-2",
+      "via": "940GZZLUGPK-Lift-1"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicEB-1",
+      "to": "940GZZLUGPK-1000093-PicWB-15",
+      "via": "940GZZLUGPK-Lift-1"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicWB-15",
+      "to": "940GZZLUGPK-1000093-LoCon-2",
+      "via": "940GZZLUGPK-Lift-1"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-PicWB-15",
+      "to": "940GZZLUGPK-1000093-PicEB-1",
+      "via": "940GZZLUGPK-Lift-1"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-LoCon-2",
+      "to": "940GZZLUGPK-1000093-JUB-19",
+      "via": "940GZZLUGPK-Lift-2"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-JUB-19",
+      "to": "940GZZLUGPK-1000093-LoCon-2",
+      "via": "940GZZLUGPK-Lift-2"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-D-P-S-4",
+      "to": "940GZZLUGPK-1000093-BookH-5",
+      "via": "940GZZLUGPK-Lift-4"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-BookH-5",
+      "to": "940GZZLUGPK-1000093-D-P-S-4",
+      "via": "940GZZLUGPK-Lift-4"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-BookH-5",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "940GZZLUGPK-Lift-5"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-BookH-5",
+      "to": "940GZZLUGPK-1000093-LoCon-2",
+      "via": "940GZZLUGPK-Lift-5"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-1000093-BookH-5",
+      "via": "940GZZLUGPK-Lift-5"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-1000093-LoCon-2",
+      "via": "940GZZLUGPK-Lift-5"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-LoCon-2",
+      "to": "940GZZLUGPK-1000093-BookH-5",
+      "via": "940GZZLUGPK-Lift-5"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-LoCon-2",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "940GZZLUGPK-Lift-5"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-BookH-5",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "940GZZLUGPK-Lift-6"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-BookH-5",
+      "to": "940GZZLUGPK-1000093-LoCon-2",
+      "via": "940GZZLUGPK-Lift-6"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-1000093-BookH-5",
+      "via": "940GZZLUGPK-Lift-6"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-VIC-18",
+      "to": "940GZZLUGPK-1000093-LoCon-2",
+      "via": "940GZZLUGPK-Lift-6"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-LoCon-2",
+      "to": "940GZZLUGPK-1000093-BookH-5",
+      "via": "940GZZLUGPK-Lift-6"
+    },
+    {
+      "from": "940GZZLUGPK-1000093-LoCon-2",
+      "to": "940GZZLUGPK-1000093-VIC-18",
+      "via": "940GZZLUGPK-Lift-6"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-BookH-1",
+      "to": "940GZZLUSWK-1000215-JubWB-9",
+      "via": "940GZZLUSWK-Lift-1"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-BookH-1",
+      "to": "940GZZLUSWK-1000215-Jubil-3",
+      "via": "940GZZLUSWK-Lift-1"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-JubWB-9",
+      "to": "940GZZLUSWK-1000215-BookH-1",
+      "via": "940GZZLUSWK-Lift-1"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-JubWB-9",
+      "to": "940GZZLUSWK-1000215-Jubil-3",
+      "via": "940GZZLUSWK-Lift-1"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-Jubil-3",
+      "to": "940GZZLUSWK-1000215-BookH-1",
+      "via": "940GZZLUSWK-Lift-1"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-Jubil-3",
+      "to": "940GZZLUSWK-1000215-JubWB-9",
+      "via": "940GZZLUSWK-Lift-1"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-A-CUT-2",
+      "to": "940GZZLUSWK-1000215-BookH-1",
+      "via": "940GZZLUSWK-Lift-2"
+    },
+    {
+      "from": "940GZZLUSWK-1000215-BookH-1",
+      "to": "940GZZLUSWK-1000215-A-CUT-2",
+      "via": "940GZZLUSWK-Lift-2"
+    },
+    {
+      "from": "HUBLBG-1000139-BookJ-3",
+      "to": "HUBLBG-1000139-JubEB-2",
+      "via": "HUBLBG-Lift-2"
+    },
+    {
+      "from": "HUBLBG-1000139-BookJ-3",
+      "to": "HUBLBG-1000139-JubWB-27",
+      "via": "HUBLBG-Lift-2"
+    },
+    {
+      "from": "HUBLBG-1000139-JubEB-2",
+      "to": "HUBLBG-1000139-BookJ-3",
+      "via": "HUBLBG-Lift-2"
+    },
+    {
+      "from": "HUBLBG-1000139-JubEB-2",
+      "to": "HUBLBG-1000139-JubWB-27",
+      "via": "HUBLBG-Lift-2"
+    },
+    {
+      "from": "HUBLBG-1000139-JubWB-27",
+      "to": "HUBLBG-1000139-BookJ-3",
+      "via": "HUBLBG-Lift-2"
+    },
+    {
+      "from": "HUBLBG-1000139-JubWB-27",
+      "to": "HUBLBG-1000139-JubEB-2",
+      "via": "HUBLBG-Lift-2"
+    },
+    {
+      "from": "HUBLBG-1000139-BOROU-4",
+      "to": "HUBLBG-1000139-BookN-8",
+      "via": "HUBLBG-Lift-3"
+    },
+    {
+      "from": "HUBLBG-1000139-BookN-8",
+      "to": "HUBLBG-1000139-BOROU-4",
+      "via": "HUBLBG-Lift-3"
+    },
+    {
+      "from": "HUBLBG-1000139-BookN-8",
+      "to": "HUBLBG-1000139-NorNB-9",
+      "via": "HUBLBG-Lift-4"
+    },
+    {
+      "from": "HUBLBG-1000139-BookN-8",
+      "to": "HUBLBG-1000139-NorSB-28",
+      "via": "HUBLBG-Lift-4"
+    },
+    {
+      "from": "HUBLBG-1000139-NorNB-9",
+      "to": "HUBLBG-1000139-BookN-8",
+      "via": "HUBLBG-Lift-4"
+    },
+    {
+      "from": "HUBLBG-1000139-NorNB-9",
+      "to": "HUBLBG-1000139-NorSB-28",
+      "via": "HUBLBG-Lift-4"
+    },
+    {
+      "from": "HUBLBG-1000139-NorSB-28",
+      "to": "HUBLBG-1000139-BookN-8",
+      "via": "HUBLBG-Lift-4"
+    },
+    {
+      "from": "HUBLBG-1000139-NorSB-28",
+      "to": "HUBLBG-1000139-NorNB-9",
+      "via": "HUBLBG-Lift-4"
+    },
+    {
+      "from": "HUBLBG-1000139-RLY-16",
+      "to": "HUBLBG-1000139-RPL45-22",
+      "via": "HUBLBG-Lift-5"
+    },
+    {
+      "from": "HUBLBG-1000139-RPL45-22",
+      "to": "HUBLBG-1000139-RLY-16",
+      "via": "HUBLBG-Lift-5"
+    },
+    {
+      "from": "HUBLBG-1000139-RLY-16",
+      "to": "HUBLBG-1000139-UpFlr-18",
+      "via": "HUBLBG-Lift-6"
+    },
+    {
+      "from": "HUBLBG-1000139-UpFlr-18",
+      "to": "HUBLBG-1000139-RLY-16",
+      "via": "HUBLBG-Lift-6"
+    },
+    {
+      "from": "HUBVIC-1000248-D-VIC-9",
+      "to": "HUBVIC-1000248-BookV-12",
+      "via": "HUBVIC-Lift-A1B2"
+    },
+    {
+      "from": "HUBVIC-1000248-BookV-12",
+      "to": "HUBVIC-1000248-D-VIC-9",
+      "via": "HUBVIC-Lift-A1B2"
+    },
+    {
+      "from": "HUBVIC-1000248-CARD-71",
+      "to": "HUBVIC-1000248-BookN-72",
+      "via": "HUBVIC-Lift-C3"
+    },
+    {
+      "from": "HUBVIC-1000248-BookN-72",
+      "to": "HUBVIC-1000248-CARD-71",
+      "via": "HUBVIC-Lift-C3"
+    },
+    {
+      "from": "HUBVIC-1000248-BookV-12",
+      "to": "HUBVIC-1000248-DisW-74",
+      "via": "HUBVIC-Lift-D4"
+    },
+    {
+      "from": "HUBVIC-1000248-BookV-12",
+      "to": "HUBVIC-1000248-SInt-76",
+      "via": "HUBVIC-Lift-D4"
+    },
+    {
+      "from": "HUBVIC-1000248-DisW-74",
+      "to": "HUBVIC-1000248-BookV-12",
+      "via": "HUBVIC-Lift-D4"
+    },
+    {
+      "from": "HUBVIC-1000248-DisW-74",
+      "to": "HUBVIC-1000248-SInt-76",
+      "via": "HUBVIC-Lift-D4"
+    },
+    {
+      "from": "HUBVIC-1000248-SInt-76",
+      "to": "HUBVIC-1000248-BookV-12",
+      "via": "HUBVIC-Lift-D4"
+    },
+    {
+      "from": "HUBVIC-1000248-SInt-76",
+      "to": "HUBVIC-1000248-DisW-74",
+      "via": "HUBVIC-Lift-D4"
+    },
+    {
+      "from": "HUBVIC-1000248-BookN-72",
+      "to": "HUBVIC-1000248-NInt-73",
+      "via": "HUBVIC-Lift-E5"
+    },
+    {
+      "from": "HUBVIC-1000248-NInt-73",
+      "to": "HUBVIC-1000248-BookN-72",
+      "via": "HUBVIC-Lift-E5"
+    },
+    {
+      "from": "HUBVIC-1000248-VicNB-4",
+      "to": "HUBVIC-1000248-VicSB-5",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-VicNB-4",
+      "to": "HUBVIC-1000248-DVLnk-16",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-VicNB-4",
+      "to": "HUBVIC-1000248-DisE-2",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-VicSB-5",
+      "to": "HUBVIC-1000248-VicNB-4",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-VicSB-5",
+      "to": "HUBVIC-1000248-DVLnk-16",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-VicSB-5",
+      "to": "HUBVIC-1000248-DisE-2",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-DVLnk-16",
+      "to": "HUBVIC-1000248-VicNB-4",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-DVLnk-16",
+      "to": "HUBVIC-1000248-VicSB-5",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-DVLnk-16",
+      "to": "HUBVIC-1000248-DisE-2",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-DisE-2",
+      "to": "HUBVIC-1000248-VicNB-4",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-DisE-2",
+      "to": "HUBVIC-1000248-VicSB-5",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-DisE-2",
+      "to": "HUBVIC-1000248-DVLnk-16",
+      "via": "HUBVIC-Lift-F6"
+    },
+    {
+      "from": "HUBVIC-1000248-NInt-73",
+      "to": "HUBVIC-1000248-VicNB-4",
+      "via": "HUBVIC-Lift-G7"
+    },
+    {
+      "from": "HUBVIC-1000248-NInt-73",
+      "to": "HUBVIC-1000248-VicSB-5",
+      "via": "HUBVIC-Lift-G7"
+    },
+    {
+      "from": "HUBVIC-1000248-VicNB-4",
+      "to": "HUBVIC-1000248-NInt-73",
+      "via": "HUBVIC-Lift-G7"
+    },
+    {
+      "from": "HUBVIC-1000248-VicNB-4",
+      "to": "HUBVIC-1000248-VicSB-5",
+      "via": "HUBVIC-Lift-G7"
+    },
+    {
+      "from": "HUBVIC-1000248-VicSB-5",
+      "to": "HUBVIC-1000248-NInt-73",
+      "via": "HUBVIC-Lift-G7"
+    },
+    {
+      "from": "HUBVIC-1000248-VicSB-5",
+      "to": "HUBVIC-1000248-VicNB-4",
+      "via": "HUBVIC-Lift-G7"
+    },
+    {
+      "from": "HUBWAT-1000254-WCArr-20",
+      "to": "HUBWAT-1000254-BookM-18",
+      "via": "HUBWAT-Lift-1"
+    },
+    {
+      "from": "HUBWAT-1000254-BookM-18",
+      "to": "HUBWAT-1000254-WCArr-20",
+      "via": "HUBWAT-Lift-1"
+    },
+    {
+      "from": "HUBWAT-1000254-BookJ-1",
+      "to": "HUBWAT-1000254-IntJu-19",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-BookJ-1",
+      "to": "HUBWAT-1000254-JubEB-2",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-BookJ-1",
+      "to": "HUBWAT-1000254-JubWB-25",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-IntJu-19",
+      "to": "HUBWAT-1000254-BookJ-1",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-IntJu-19",
+      "to": "HUBWAT-1000254-JubEB-2",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-IntJu-19",
+      "to": "HUBWAT-1000254-JubWB-25",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-JubEB-2",
+      "to": "HUBWAT-1000254-BookJ-1",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-JubEB-2",
+      "to": "HUBWAT-1000254-IntJu-19",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-JubEB-2",
+      "to": "HUBWAT-1000254-JubWB-25",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-JubWB-25",
+      "to": "HUBWAT-1000254-BookJ-1",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-JubWB-25",
+      "to": "HUBWAT-1000254-IntJu-19",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-JubWB-25",
+      "to": "HUBWAT-1000254-JubEB-2",
+      "via": "HUBWAT-Lift-2"
+    },
+    {
+      "from": "HUBWAT-1000254-BookM-18",
+      "to": "HUBWAT-1000254-NRDP-22",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-BookM-18",
+      "to": "HUBWAT-1000254-TSC-23",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-BookM-18",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-NRDP-22",
+      "to": "HUBWAT-1000254-BookM-18",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-NRDP-22",
+      "to": "HUBWAT-1000254-TSC-23",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-NRDP-22",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-TSC-23",
+      "to": "HUBWAT-1000254-BookM-18",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-TSC-23",
+      "to": "HUBWAT-1000254-NRDP-22",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-TSC-23",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-BookM-18",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-NRDP-22",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-TSC-23",
+      "via": "HUBWAT-Lift-3"
+    },
+    {
+      "from": "HUBWAT-1000254-B-WOR-13",
+      "to": "HUBWAT-1000254-RPL-14",
+      "via": "HUBWAT-Lift-4"
+    },
+    {
+      "from": "HUBWAT-1000254-RPL-14",
+      "to": "HUBWAT-1000254-B-WOR-13",
+      "via": "HUBWAT-Lift-4"
+    },
+    {
+      "from": "HUBWSM-1000266-BookH-4",
+      "to": "HUBWSM-1000266-A-BRI-2",
+      "via": "HUBWSM-Lift-2"
+    },
+    {
+      "from": "HUBWSM-1000266-A-BRI-2",
+      "to": "HUBWSM-1000266-BookH-4",
+      "via": "HUBWSM-Lift-2"
+    },
+    {
+      "from": "HUBWSM-1000266-BookH-4",
+      "to": "HUBWSM-1000266-DisEB-3",
+      "via": "HUBWSM-Lift-3"
+    },
+    {
+      "from": "HUBWSM-1000266-DisEB-3",
+      "to": "HUBWSM-1000266-BookH-4",
+      "via": "HUBWSM-Lift-3"
+    },
+    {
+      "from": "HUBWSM-1000266-BookH-4",
+      "to": "HUBWSM-1000266-DisWB-5",
+      "via": "HUBWSM-Lift-4"
+    },
+    {
+      "from": "HUBWSM-1000266-DisWB-5",
+      "to": "HUBWSM-1000266-BookH-4",
+      "via": "HUBWSM-Lift-4"
+    },
+    {
+      "from": "HUBWSM-1000266-DisWB-5",
+      "to": "HUBWSM-1000266-JubEB-6",
+      "via": "HUBWSM-Lift-5"
+    },
+    {
+      "from": "HUBWSM-1000266-DisWB-5",
+      "to": "HUBWSM-1000266-JubWB-11",
+      "via": "HUBWSM-Lift-5"
+    },
+    {
+      "from": "HUBWSM-1000266-JubEB-6",
+      "to": "HUBWSM-1000266-DisWB-5",
+      "via": "HUBWSM-Lift-5"
+    },
+    {
+      "from": "HUBWSM-1000266-JubEB-6",
+      "to": "HUBWSM-1000266-JubWB-11",
+      "via": "HUBWSM-Lift-5"
+    },
+    {
+      "from": "HUBWSM-1000266-JubWB-11",
+      "to": "HUBWSM-1000266-DisWB-5",
+      "via": "HUBWSM-Lift-5"
+    },
+    {
+      "from": "HUBWSM-1000266-JubWB-11",
+      "to": "HUBWSM-1000266-JubEB-6",
+      "via": "HUBWSM-Lift-5"
+    }
+  ],
+  "demoOutage": {
+    "liftUniqueId": "940GZZLUGPK-Lift-2",
+    "stationId": "GPK",
+    "friendlyName": "Lift 2",
+    "affectedTransferIds": [
+      "GPK:street~GPK:jubilee",
+      "GPK:jubilee~GPK:street",
+      "GPK:victoria~GPK:jubilee",
+      "GPK:jubilee~GPK:victoria"
+    ],
+    "evidence": "In TfL Lifts.csv, 940GZZLUGPK-Lift-2 links 940GZZLUGPK-1000093-LoCon-2 and 940GZZLUGPK-1000093-JUB-19. It is the only lift whose removal breaks every step-free path between the Green Park Victoria line and Jubilee line platforms."
+  }
+}
