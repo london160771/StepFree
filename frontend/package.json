@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "icons": "pwa-assets-generator"
+    "icons": "pwa-assets-generator",
+    "city": "node scripts/build-city.mjs"
   },
   "dependencies": {
     "framer-motion": "^14.3.0",
@@ -25,6 +26,7 @@
     "@vite-pwa/assets-generator": "^2.0.0",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

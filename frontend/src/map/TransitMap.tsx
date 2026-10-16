@@ -1,7 +1,7 @@
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import { useEffect, useMemo } from 'react';
 import type { GraphEdge, LineId, Route, Station } from '../api';
-import { BRIDGES, PARKS, RIVER_POINTS, cityGrid, isoFaces, parkTrees, shadowPath, type Block } from './city';
+import { CITY_AREA, CITY_IMAGES } from './city';
 import {
   LABEL_ANCHORS,
   LIFT_OFFSETS,
@@ -48,19 +48,12 @@ interface Props {
   entrance: 'none' | 'hidden' | 'reveal';
 }
 
-const TREES = parkTrees();
-const RIVER = RIVER_POINTS.map((p) => `${p.x},${p.y}`).join(' ');
-
 export function TransitMap({ frame, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey, entrance }: Props) {
   const reduceMotion = useReducedMotion() ?? false;
   const staged = entrance !== 'none' && !reduceMotion;
   const shown = entrance === 'reveal';
-  const city = useMemo(() => cityGrid(edges, frame), [edges, frame]);
-  const layers = useMemo(() => {
-    const far = city.blocks.filter((b) => b.far);
-    const near = city.blocks.filter((b) => !b.far);
-    return { far, near, shadows: shadowPath(city.blocks) };
-  }, [city]);
+  // Phones get the lighter, lower-resolution backdrop and a stronger calming wash.
+  const compact = frame.w < 600;
   const lines = useMemo(() => lineSegments(edges), [edges]);
   const routeLifts = useMemo(() => liftStations(route), [route]);
   const points = route ? routePoints(route) : null;
@@ -91,66 +84,80 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
   const viewBox = `${frame.x} ${frame.y} ${frame.w} ${frame.h}`;
   return (
     <div className="relative h-full w-full select-none">
-      {/* Static city in its own SVG and compositing layer, so trains and route motion above never repaint it. */}
+      {/* London backdrop in its own SVG and compositing layer, so trains and route motion above never repaint it. */}
       <svg viewBox={viewBox} className="absolute inset-0 h-full w-full" aria-hidden style={{ willChange: 'transform' }}>
         <defs>
-          <linearGradient id="thames" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#c4dbe8" />
-            <stop offset="100%" stopColor="#d6e7f0" />
-          </linearGradient>
           <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#eef1f4" stopOpacity="0.75" />
-            <stop offset="35%" stopColor="#eef1f4" stopOpacity="0" />
+            <stop offset="0%" stopColor="#eef1f4" stopOpacity="0.7" />
+            <stop offset="30%" stopColor="#eef1f4" stopOpacity="0" />
           </linearGradient>
           <radialGradient id="vignette" cx="50%" cy="45%" r="75%">
-            <stop offset="60%" stopColor="#f3f1ec" stopOpacity="0" />
-            <stop offset="100%" stopColor="#e9e6df" stopOpacity="0.85" />
+            <stop offset="58%" stopColor="#f3f1ec" stopOpacity="0" />
+            <stop offset="100%" stopColor="#e9e6df" stopOpacity="0.9" />
+          </radialGradient>
+          <radialGradient id="cloud">
+            <stop offset="0%" stopColor="#1e293b" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="#1e293b" stopOpacity="0" />
           </radialGradient>
         </defs>
 
         <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="var(--map-ground)" />
 
-        {/* City context: streets, the Thames, parks, then two depth layers of buildings. */}
-        <motion.g aria-hidden {...enter(REVEAL.roads, {}, 0.9)}>
-          {city.roads.map((road, i) => (
+        {/* Real central London (OpenStreetMap), warped onto the station layout and rendered in 2.5D. */}
+        <motion.g {...enter(REVEAL.city, { y: 12 }, 1.3)}>
+          <image
+            href={compact ? CITY_IMAGES.mobile : CITY_IMAGES.desktop}
+            x={CITY_AREA.x}
+            y={CITY_AREA.y}
+            width={CITY_AREA.w}
+            height={CITY_AREA.h}
+            preserveAspectRatio="none"
+          />
+        </motion.g>
+        {/* Calm the city so the network stays the strongest layer. */}
+        <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="var(--map-ground)" opacity={compact ? 0.3 : 0.12} />
+        <motion.g {...enter(REVEAL.network, {}, 0.8)}>
+          {lines.map((segment) => (
             <line
-              key={i}
-              x1={road.a.x}
-              y1={road.a.y}
-              x2={road.b.x}
-              y2={road.b.y}
-              stroke={road.main ? 'var(--map-road-main)' : 'var(--map-road)'}
-              strokeWidth={road.main ? 13 : 8}
+              key={segment.key}
+              x1={segment.a.x}
+              y1={segment.a.y}
+              x2={segment.b.x}
+              y2={segment.b.y}
+              stroke="#fbfaf7"
+              strokeWidth={compact ? 30 : 34}
+              strokeLinecap="round"
+              opacity={0.55}
             />
           ))}
-          {/* Embankment and water. */}
-          <polyline points={RIVER} fill="none" stroke="var(--map-bank)" strokeWidth={36} strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points={RIVER} fill="none" stroke="url(#thames)" strokeWidth={30} strokeLinecap="round" strokeLinejoin="round" />
-          {BRIDGES.map(([a, b], i) => (
-            <g key={i}>
-              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#cdc5b6" strokeWidth={7} />
-              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#f6f3ec" strokeWidth={4.5} />
-            </g>
+          {stationOrder.map((id) => (
+            <circle key={id} cx={STATION_POSITIONS[id].x} cy={STATION_POSITIONS[id].y} r={24} fill="#fbfaf7" opacity={0.5} />
           ))}
-          {PARKS.map((p) => (
-            <rect key={`${p.x}-${p.y}`} x={p.x} y={p.y} width={p.w} height={p.h} rx={p.r} fill="var(--map-park)" stroke="var(--map-park-edge)" strokeWidth={1.5} />
-          ))}
-          {TREES.map((t, i) => (
-            <g key={i}>
-              <circle cx={t.x + 1} cy={t.y + 1.5} r={t.r} fill="#1e293b" opacity={0.08} />
-              <circle cx={t.x} cy={t.y} r={t.r} fill="var(--tree)" />
-              <circle cx={t.x - t.r * 0.3} cy={t.y - t.r * 0.35} r={t.r * 0.45} fill="var(--tree-light)" />
-            </g>
-          ))}
-          <path d={layers.shadows} fill="#1e293b" opacity={0.06} />
         </motion.g>
-        <motion.g aria-hidden opacity={0.7} {...enter(REVEAL.farBlocks, { y: 10 }, 1.1)}>
-          <Blocks blocks={layers.far} />
-        </motion.g>
-        <motion.g aria-hidden {...enter(REVEAL.nearBlocks, { y: 22 }, 1.1)}>
-          <Blocks blocks={layers.near} />
-        </motion.g>
-        {/* Atmospheric haze toward the top, and a soft vignette, push the city back behind the network. */}
+        {/* Slow cloud shadows drifting over the city. */}
+        {!reduceMotion && entrance !== 'hidden' && (
+          <g>
+            <motion.ellipse
+              cy={frame.y + frame.h * 0.3}
+              rx={frame.w * 0.35}
+              ry={frame.h * 0.18}
+              fill="url(#cloud)"
+              initial={{ cx: frame.x - frame.w * 0.2 }}
+              animate={{ cx: frame.x + frame.w * 1.2 }}
+              transition={{ duration: 70, ease: 'linear', repeat: Infinity }}
+            />
+            <motion.ellipse
+              cy={frame.y + frame.h * 0.72}
+              rx={frame.w * 0.28}
+              ry={frame.h * 0.14}
+              fill="url(#cloud)"
+              initial={{ cx: frame.x + frame.w * 0.6 }}
+              animate={{ cx: frame.x + frame.w * 1.3 }}
+              transition={{ duration: 55, ease: 'linear', repeat: Infinity, repeatType: 'loop' }}
+            />
+          </g>
+        )}
+        {/* Atmospheric haze toward the top, and a soft vignette. */}
         <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="url(#haze)" pointerEvents="none" />
         <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="url(#vignette)" pointerEvents="none" />
       </svg>
@@ -171,27 +178,9 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
           </filter>
           {/* Lifts the network above the city for gentle depth. */}
           <filter id="network-lift" x="-10%" y="-10%" width="120%" height="120%">
-            <feDropShadow dx="0" dy="2.5" stdDeviation="2.2" floodColor="#0f172a" floodOpacity="0.16" />
+            <feDropShadow dx="0" dy="2.5" stdDeviation="2.2" floodColor="#0f172a" floodOpacity="0.18" />
           </filter>
         </defs>
-
-        {/* A slow highlight drifting down the Thames. */}
-        <motion.g aria-hidden {...enter(REVEAL.roads, {}, 0.9)}>
-          {!reduceMotion && (
-            <motion.polyline
-              points={RIVER}
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeDasharray="10 46"
-              opacity={0.45}
-              initial={{ strokeDashoffset: 0 }}
-              animate={{ strokeDashoffset: -112 }}
-              transition={{ duration: 9, ease: 'linear', repeat: Infinity }}
-            />
-          )}
-        </motion.g>
 
         {/* Network from FalkorDB, drawn in on first load. */}
         <g aria-hidden filter="url(#network-lift)">
@@ -344,24 +333,6 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
         {!journey && userPoint && <JourneyFigure key="figure-user" points={[userPoint]} reduceMotion={reduceMotion} startDelay={0} />}
       </svg>
     </div>
-  );
-}
-
-function Blocks({ blocks }: { blocks: Block[] }) {
-  return (
-    <>
-      {blocks.map((block, i) => {
-        const faces = isoFaces(block);
-        const shade = block.tone > 0.66 ? 'b' : block.tone > 0.33 ? 'a' : 'c';
-        return (
-          <g key={i}>
-            <polygon points={faces.left} fill={`var(--block-${shade}-left)`} />
-            <polygon points={faces.right} fill={`var(--block-${shade}-right)`} />
-            <polygon points={faces.top} fill={`var(--block-${shade}-top)`} />
-          </g>
-        );
-      })}
-    </>
   );
 }
 

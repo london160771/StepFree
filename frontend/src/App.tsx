@@ -107,6 +107,9 @@ function MapHome({ introEnabled, stage, onSkip }: { introEnabled: boolean; stage
           />
         )}
         </motion.div>
+        <p className="pointer-events-none absolute bottom-3 right-3 z-10 hidden rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600 lg:block">
+          Map data © OpenStreetMap contributors
+        </p>
         {/* Unmounted by a timer (not an exit animation), so it can never linger over the map. */}
         {introEnabled && stage !== 'done' && <Intro leaving={stage === 'reveal'} onSkip={onSkip} />}
         <motion.div
@@ -124,6 +127,7 @@ function MapHome({ introEnabled, stage, onSkip }: { introEnabled: boolean; stage
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200 lg:hidden" aria-hidden />
         <RoutePanel store={store} />
+        <p className="mt-3 text-xs text-slate-400 lg:hidden">Map data © OpenStreetMap contributors</p>
       </motion.section>
     </main>
   );

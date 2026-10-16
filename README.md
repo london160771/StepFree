@@ -93,4 +93,6 @@ Ride times come from the TfL timetable API. Step-free transfer times assume 3 km
 
 Graph routing by [FalkorDB](https://www.falkordb.com/). Transit, station topology and lift data from Transport for London. Powered by TfL Open Data.
 
+City backdrop: built from [OpenStreetMap](https://www.openstreetmap.org/copyright) data, © OpenStreetMap contributors, available under the Open Database License. `frontend/scripts/build-city.mjs` warps real central London onto the station layout and renders it as images in `frontend/public/city/`; no OSM data is bundled.
+
 Intro photo: [Big Ben and Westminster Bridge at dusk](https://commons.wikimedia.org/wiki/File:Big_Ben_and_Westminster_Bridge_at_dusk_2017-unsplash.jpg), CC0 (public domain dedication), via Wikimedia Commons. Resized and cropped to WebP in `frontend/public/intro/`.

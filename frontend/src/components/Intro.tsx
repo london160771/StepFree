@@ -25,18 +25,23 @@ export function Intro({ leaving, onSkip }: { leaving: boolean; onSkip: () => voi
     <div className="pointer-events-none absolute inset-0 z-30">
       <motion.div
         aria-hidden
-        className="absolute inset-0 overflow-hidden bg-[#161a22]"
-        initial={{ opacity: 0 }}
+        className="absolute inset-0 overflow-hidden bg-[linear-gradient(180deg,#2a2f3b_0%,#3f4150_55%,#6e5552_78%,#23262e_100%)]"
+        initial={false}
         animate={{ opacity: leaving ? 0 : 1 }}
-        transition={leaving ? { duration: 1.4, ease: EASE_IN_OUT, delay: 0.15 } : { duration: 0.8, ease: 'easeOut' }}
+        transition={{ duration: 1.3, ease: EASE_IN_OUT, delay: 0.1 }}
       >
         {/* Slow push-in on the photo; on leaving it settles back as it dissolves. */}
         <motion.picture
           className="absolute inset-0 block"
           style={{ opacity: photoReady ? 1 : 0, transition: 'opacity 0.9s ease-out' }}
-          initial={{ scale: 1.14, x: '1.5%' }}
-          animate={leaving ? { scale: 1.02, x: '0%' } : { scale: 1.06, x: '0%' }}
-          transition={{ duration: leaving ? 1.5 : 7.4, ease: EASE_OUT }}
+          initial={{ scale: 1.1, x: '1.5%', y: '0%' }}
+          animate={
+            leaving
+              ? { scale: 1.26, x: '-1%', y: '-3%' }
+              : // Settle, then begin pushing in toward the river before the map takes over.
+                { scale: [1.1, 1.05, 1.13], x: ['1.5%', '0%', '-0.5%'], y: ['0%', '0%', '-1.5%'] }
+          }
+          transition={leaving ? { duration: 1.4, ease: EASE_OUT } : { duration: 3.6, times: [0, 0.78, 1], ease: ['easeOut', 'easeIn'] }}
         >
           <source media="(max-width: 767px)" srcSet="/intro/westminster-dusk-720.webp" />
           <img
@@ -74,7 +79,7 @@ export function Intro({ leaving, onSkip }: { leaving: boolean; onSkip: () => voi
               className={`inline-block ${i >= 4 ? 'text-teal-300' : ''}`}
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 + i * 0.055, duration: 0.6, ease: EASE_OUT }}
+              transition={{ delay: 0.9 + i * 0.055, duration: 0.6, ease: EASE_OUT }}
             >
               {char}
             </motion.span>
@@ -84,13 +89,13 @@ export function Intro({ leaving, onSkip }: { leaving: boolean; onSkip: () => voi
           className="mx-auto mt-4 h-1 w-24 origin-left rounded-full bg-teal-300/90 lg:mr-0 lg:origin-right"
           initial={{ scaleX: 0, opacity: 0 }}
           animate={{ scaleX: 1, opacity: 1 }}
-          transition={{ delay: 1.1, duration: 0.7, ease: EASE_OUT }}
+          transition={{ delay: 1.5, duration: 0.7, ease: EASE_OUT }}
         />
         <motion.p
           className="mx-auto mt-5 max-w-xs text-balance lg:mr-0 text-xl font-medium leading-snug text-white/95 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)] sm:max-w-md lg:max-w-xl lg:text-3xl"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.5, duration: 0.8, ease: EASE_OUT }}
+          transition={{ delay: 1.85, duration: 0.8, ease: EASE_OUT }}
         >
           The shortest route isn’t useful if you can’t use it.
         </motion.p>
