@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type AgentResponse, type LiftDisruption, type Mode, type NetworkResponse, type PlanB, type Route, type RouteHealth, type TraceEntry, type WhyThisRoute } from './api';
+import { api, type AgentResponse, type AgentStatus, type DemoDisruptionInfo, type DemoDisruptionKind, type LiftDisruption, type Mode, type NetworkResponse, type PlanB, type Route, type RouteHealth, type TraceEntry, type WhyThisRoute } from './api';
 import { placeOnMap, schematicPositions, type Point } from './map/layout';
 
 export type Phase = 'idle' | 'finding' | 'route' | 'outage' | 'recalculating' | 'rerouted' | 'noroute';
@@ -44,6 +44,10 @@ export function useStepFree() {
   const [planB, setPlanB] = useState<PlanB | null>(null);
   const [why, setWhy] = useState<WhyThisRoute | null>(null);
   const sessionId = useRef<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
+  /** The simulated Demo Mode event the user activated, if any (one at a time). */
+  const [activeDisruption, setActiveDisruption] = useState<DemoDisruptionInfo | null>(null);
+  const [selectedKind, setSelectedKind] = useState<DemoDisruptionKind>('LIFT');
   const run = useRef(0);
 
   useEffect(() => {
@@ -72,6 +76,8 @@ export function useStepFree() {
     setRouteHealth(null);
     setPlanB(null);
     setWhy(null);
+    setAgentStatus(null);
+    setActiveDisruption(null);
     sessionId.current = null;
   }, []);
 
@@ -92,8 +98,9 @@ export function useStepFree() {
     else setFromState('VIC');
   };
 
-  const findRoute = async () => {
-    if (from === to) {
+  const findRoute = async (journey: { from: string; to: string } = { from, to }) => {
+    const { from: origin, to: destination } = journey;
+    if (origin === destination) {
       setError('Choose two different stations.');
       return;
     }
@@ -105,7 +112,7 @@ export function useStepFree() {
     setPhase('finding');
     try {
       const stationName = (stationId: string) => network?.stations.find((st) => st.id === stationId)?.name ?? stationId;
-      const res = await api.agentJourney({ origin: stationName(from), destination: stationName(to), mode });
+      const res = await api.agentJourney({ origin: stationName(origin), destination: stationName(destination), mode, demoDisruption: mode === 'demo' ? null : undefined });
       if (id !== run.current) return;
       if (!showable(res)) {
         setError(res.message);
@@ -114,6 +121,7 @@ export function useStepFree() {
       }
       const journey = res.route!;
       sessionId.current = res.sessionId;
+      setAgentStatus(res.status);
       setUnavailableLifts(journey.unavailable.lifts);
       setOutageStationIds(mode === 'live' ? affectedStations(journey.unavailable.lifts, journey.unavailable.transferIds) : []);
       setRoute(journey.route);
@@ -132,11 +140,24 @@ export function useStepFree() {
     }
   };
 
-  /** Demo Mode: make the verified Green Park lift unavailable and let FalkorDB find another route. */
-  const simulateOutage = async () => {
-    if (!network || !route) return;
+  /** Run Judge Demo: the healthy Victoria to London Bridge journey, with no disruption and no location. */
+  const runJudgeDemo = () => {
+    clearRoute();
+    setFromState('VIC');
+    setToState('LNB');
+    void findRoute({ from: 'VIC', to: 'LNB' });
+  };
+
+  /**
+   * Demo Mode: activate one of the controlled, simulated disruptions. This only reports which event was activated;
+   * the agent decides whether the current journey is affected and, if so, asks FalkorDB for another route.
+   */
+  const simulateDisruption = async (kind: DemoDisruptionKind = selectedKind) => {
+    const info = network?.demoDisruptions.find((d) => d.kind === kind);
+    if (!network || !route || !info) return;
     const id = ++run.current;
-    setOutageStationIds([network.demoOutage.stationId]);
+    setActiveDisruption(info);
+    setOutageStationIds(markedStations(info, route));
     setPhase('outage');
     await wait(OUTAGE_HOLD_MS);
     if (id !== run.current) return;
@@ -144,18 +165,20 @@ export function useStepFree() {
     setRoute(null);
     setPhase('recalculating');
     try {
-      // The app only reports that the outage happened. The agent re-checks the journey and decides what to do.
-      const [res] = await Promise.all([api.agentJourney({ sessionId: sessionId.current ?? undefined, mode: 'demo', demoOutage: true }), wait(RECALC_MIN_MS)]);
+      const [res] = await Promise.all([api.agentJourney({ sessionId: sessionId.current ?? undefined, mode: 'demo', demoDisruption: kind }), wait(RECALC_MIN_MS)]);
       if (id !== run.current) return;
       if (!showable(res)) {
         setRoute(route);
         setFadingRoute(null);
+        setActiveDisruption(null);
+        setOutageStationIds([]);
         setError(res.message);
         setPhase('route');
         return;
       }
       const journey = res.route!;
       sessionId.current = res.sessionId;
+      setAgentStatus(res.status);
       setUnavailableLifts(journey.unavailable.lifts);
       setRoute(journey.route);
       setNoRouteReason(journey.noRouteReason);
@@ -170,6 +193,8 @@ export function useStepFree() {
       if (id !== run.current) return;
       setRoute(route);
       setFadingRoute(null);
+      setActiveDisruption(null);
+      setOutageStationIds([]);
       setError((e as Error).message);
       setPhase('route');
     }
@@ -249,9 +274,21 @@ export function useStepFree() {
     error,
     journeyKey,
     findRoute,
-    simulateOutage,
+    agentStatus,
+    activeDisruption,
+    selectedKind,
+    setSelectedKind,
+    runJudgeDemo,
+    simulateDisruption,
     resetDemo,
   };
+}
+
+/** Where to show the red marker for a simulated event: its station, or the stations the current route rides that line through. */
+export function markedStations(info: DemoDisruptionInfo, route: Route): string[] {
+  if (info.stationId) return [info.stationId];
+  const onLine = route.legs.flatMap((leg) => (leg.type === 'ride' && leg.lines.length === 1 && leg.lines[0] === info.line ? leg.stations : []));
+  return [...new Set(onLine)];
 }
 
 /** The agent produced a journey (a route, or an honest no-route) that the app can show. */

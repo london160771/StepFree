@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { LiftDisruption, Route, RouteHealth } from '../api';
 import type { useStepFree } from '../useStepFree';
 import { DecisionTrace } from './DecisionTrace';
+import { RunJudgeDemoButton, SimulateDisruption, SimulatedDisruptionBanner } from './DemoControls';
 import { PlanBSection, RouteHealthStatus, WhyThisRouteSection } from './JourneyInsights';
 import { describeLeg, SAFETY_NOTE } from './describe';
 import { CheckGlyph, InfoGlyph, LiftGlyph, LocationGlyph } from './icons';
@@ -99,7 +100,7 @@ function Notice({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Planner({ store }: { store: Store }) {
-  const { network, mode, live, from, to, setFrom, setTo, phase, route, findRoute } = store;
+  const { network, mode, live, from, to, setFrom, setTo, phase, route, findRoute, runJudgeDemo } = store;
   const stations = network!.stations;
   const name = (id: string) => stations.find((s) => s.id === id)?.name ?? id;
   const busy = phase === 'finding' || phase === 'outage' || phase === 'recalculating';
@@ -148,9 +149,12 @@ function Planner({ store }: { store: Store }) {
       </div>
 
       {(phase === 'idle' || phase === 'noroute' || phase === 'finding') && (
-        <button type="button" className="btn-primary" onClick={findRoute} disabled={busy || from === to}>
-          {phase === 'finding' ? 'Finding a step-free route…' : 'Find Step-Free Route'}
-        </button>
+        <div className="space-y-3">
+          {mode === 'demo' && <RunJudgeDemoButton onClick={runJudgeDemo} disabled={busy} />}
+          <button type="button" className={mode === 'demo' ? 'btn-secondary' : 'btn-primary'} onClick={() => void findRoute()} disabled={busy || from === to}>
+            {phase === 'finding' ? 'Finding a step-free route…' : 'Find Step-Free Route'}
+          </button>
+        </div>
       )}
 
       <div aria-live="polite">
@@ -172,13 +176,13 @@ function Planner({ store }: { store: Store }) {
 }
 
 function PhaseContent({ store, name }: { store: Store; name: (id: string) => string }) {
-  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateOutage, resetDemo, noRouteReason, agentMessage, trace, routeHealth, planB, why } = store;
-  const outageLift = network!.demoOutage;
+  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateDisruption, resetDemo, noRouteReason, agentMessage, trace, routeHealth, planB, why } = store;
+  const { activeDisruption, selectedKind, setSelectedKind, agentStatus } = store;
 
   if (phase === 'outage' || phase === 'recalculating') {
     return (
       <div className="space-y-3">
-        <OutageBanner stationName={name(outageLift.stationId)} detail={`${outageLift.friendlyName} links the Victoria line and Jubilee line platforms.`} />
+        {activeDisruption && <SimulatedDisruptionBanner info={activeDisruption} detail="A Demo Mode event, not a real TfL disruption. Checking whether it affects your journey…" />}
         {phase === 'recalculating' && (
           <p className="flex items-center gap-3 text-base font-medium text-slate-700">
             <span className="calm-spinner" aria-hidden />
@@ -193,7 +197,7 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
     return (
       <Notice title="No step-free route right now">
         {noRouteReason ?? 'No step-free route is currently available in the supported network.'}
-        {mode === 'demo' && unavailableLifts.length > 0 && (
+        {mode === 'demo' && activeDisruption && (
           <div className="mt-4">
             <button type="button" className="btn-secondary" onClick={resetDemo}>
               Reset demo
@@ -215,11 +219,15 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
   }
 
   if ((phase === 'route' || phase === 'rerouted') && route) {
-    const unchanged = phase === 'rerouted' && fadingRoute && fadingRoute.stations.join() === route.stations.join();
+    const unaffected = phase === 'rerouted' && agentStatus === 'ROUTE_RETAINED';
     return (
       <div className="space-y-4">
-        {phase === 'rerouted' && (
-          <OutageBanner compact stationName={name(outageLift.stationId)} detail={unchanged ? 'This route doesn’t use that lift, so it stays the same.' : (agentMessage ?? 'Here is another step-free route.')} />
+        {phase === 'rerouted' && activeDisruption && (
+          <SimulatedDisruptionBanner
+            compact
+            info={activeDisruption}
+            detail={unaffected ? 'This disruption does not affect your journey, so StepFree kept your route.' : (agentMessage ?? 'Here is another step-free route.')}
+          />
         )}
         {mode === 'live' && unavailableLifts.length > 0 && <LiveDisruptions lifts={unavailableLifts} name={name} />}
         {phase === 'route' && agentMessage && <p className="text-base font-medium text-slate-800">{agentMessage}</p>}
@@ -227,15 +235,12 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
         {planB && <PlanBSection planB={planB} name={name} />}
         {why && <WhyThisRouteSection why={why} />}
         <DecisionTrace trace={trace} />
-        {mode === 'demo' && phase === 'route' && (
-          <button type="button" className="btn-outage" onClick={simulateOutage}>
-            <LiftGlyph unavailable className="h-5 w-5" />
-            Simulate lift outage
-          </button>
+        {mode === 'demo' && phase === 'route' && network!.demoDisruptions.length > 0 && (
+          <SimulateDisruption options={network!.demoDisruptions} selected={selectedKind} onSelect={setSelectedKind} onSimulate={() => void simulateDisruption(selectedKind)} />
         )}
         {mode === 'demo' && phase === 'rerouted' && (
           <button type="button" className="btn-secondary" onClick={resetDemo}>
-            Restore lift and reset demo
+            Reset demo
           </button>
         )}
       </div>
@@ -295,18 +300,6 @@ function RouteResult({ route, name, previousMinutes, health }: { route: Route; n
         ))}
       </ol>
       </details>
-    </div>
-  );
-}
-
-function OutageBanner({ stationName, detail, compact = false }: { stationName: string; detail: string; compact?: boolean }) {
-  return (
-    <div className={`flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 ${compact ? 'p-3' : 'p-4'}`} role="status">
-      <LiftGlyph unavailable className="mt-0.5 h-6 w-6 shrink-0 text-red-700" />
-      <div>
-        <p className="text-base font-semibold text-red-900">Lift unavailable at {stationName}</p>
-        <p className="text-sm text-red-800">{detail}</p>
-      </div>
     </div>
   );
 }

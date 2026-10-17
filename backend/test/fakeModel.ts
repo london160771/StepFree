@@ -34,11 +34,11 @@ export function policyModel(options: { origin: string; destination: string; rech
         }
         // The route's required connections come with the plan result (or, on a re-check, with the goal text).
         const required: string[] = current ? JSON.parse(goalText.match(/requires these connections: (\[.*?\])/)![1]) : planned.requiredConnectionIds;
-        if (!last('get_accessibility_disruptions')) {
-          return call('get_accessibility_disruptions', { mode: 'demo', relevantConnectionIds: required });
+        if (!last('get_journey_disruptions')) {
+          return call('get_journey_disruptions', { mode: 'demo', relevantConnectionIds: required });
         }
         if (last('record_journey_decision')) return finish();
-        const relevant = last('get_accessibility_disruptions').disruptions.filter((d: any) => d.relevant).map((d: any) => d.connectionId);
+        const relevant = last('get_journey_disruptions').disruptions.filter((d: any) => d.relevant).map((d: any) => d.id);
         if (relevant.length > 0) {
           const alt = last('find_alternative_route');
           if (!alt) return call('find_alternative_route', { origin, destination, unavailableConnectionIds: relevant });

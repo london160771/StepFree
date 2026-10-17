@@ -14,8 +14,10 @@ export interface GroundingFacts {
   viaStation: string | null;
   /** Lines (display names, e.g. "Jubilee") on the final and previous route. */
   lines: string[];
-  /** Disrupted connections the decision rests on. */
-  disruptions: { station: string; name: string; connectionId: string }[];
+  /** Disrupted connections the decision rests on (a lift, a station or a line). */
+  disruptions: { kind: 'LIFT' | 'STATION' | 'LINE'; label: string; closed: boolean; station: string | null; connectionId: string }[];
+  /** Active disruptions that do not affect this journey. */
+  unrelated: { label: string; closed: boolean }[];
   noRouteReason: string | null;
 }
 
@@ -29,12 +31,12 @@ export function deterministicMessage(facts: GroundingFacts): string {
     case 'ROUTE_SELECTED':
       return `Your step-free route is ready. It takes about ${minutes} minutes.`;
     case 'ROUTE_RETAINED':
-      return `Your current step-free route is still usable. It takes about ${minutes} minutes.`;
+      return `Your current step-free route is still usable${facts.unrelated.length > 0 ? `, because ${facts.unrelated.map((d) => `${d.label} being ${d.closed ? 'closed' : 'unavailable'}`).join(' and ')} does not affect it` : ''}. It takes about ${minutes} minutes.`;
     case 'REROUTED': {
-      const out = facts.disruptions.length > 0 ? facts.disruptions.map((d) => `${d.station} ${d.name}`).join(' and ') : 'A lift on your route';
-      const plural = facts.disruptions.length > 1 ? 'are' : 'is';
+      const state = (d: { closed: boolean }) => (d.closed ? 'closed' : 'unavailable');
+      const out = facts.disruptions.length > 0 ? facts.disruptions.map((d) => `${d.label} is ${state(d)}`).join(' and ') : 'Something on your route is unavailable';
       const via = facts.viaStation ? ` through ${facts.viaStation}` : '';
-      return `${out} ${plural} unavailable and your previous journey depended on it. I've found another step-free route${via}. It takes about ${minutes} minutes.`;
+      return `${out} and your previous journey depended on it. I've found another step-free route${via}. It takes about ${minutes} minutes.`;
     }
     case 'NO_ROUTE':
       return facts.noRouteReason ?? 'No step-free route is currently available in the supported network.';
@@ -65,7 +67,7 @@ export function claimsAreSupported(text: string, facts: GroundingFacts, supporte
   if (facts.durationMinutes !== null && !new RegExp(`\\b${facts.durationMinutes}\\s*(?:min|minute|minutes|mins)\\b`, 'i').test(text)) return false;
 
   // Supported stations may only be named if they belong to this journey or a disruption in it.
-  const allowedStations = new Set([...facts.routeStations, ...facts.disruptions.map((d) => d.station), ...(facts.viaStation ? [facts.viaStation] : [])].map(stationKey));
+  const allowedStations = new Set([...facts.routeStations, ...facts.disruptions.flatMap((d) => (d.station ? [d.station] : [])), ...(facts.viaStation ? [facts.viaStation] : [])].map(stationKey));
   const haystack = ` ${stationKey(text)} `;
   for (const name of supportedStations) {
     const key = stationKey(name);
@@ -73,7 +75,8 @@ export function claimsAreSupported(text: string, facts: GroundingFacts, supporte
   }
 
   // Lines: "<Name> line" must be a line on the route.
-  const lines = new Set(facts.lines.map((l) => l.toLowerCase()));
+  // A disrupted line may be named ("the Jubilee line is unavailable") even though the new route no longer uses it.
+  const lines = new Set([...facts.lines, ...[...facts.disruptions, ...facts.unrelated].map((d) => d.label.replace(/ line$/i, ''))].map((l) => l.toLowerCase()));
   for (const match of text.matchAll(/\b([A-Z][A-Za-z&-]+(?: (?:and|&|City) [A-Z][A-Za-z&-]+)?)\s+line\b/g)) {
     const name = match[1].toLowerCase();
     const known = ['bakerloo', 'central', 'circle', 'district', 'hammersmith', 'jubilee', 'metropolitan', 'northern', 'piccadilly', 'victoria', 'waterloo'];
@@ -81,9 +84,9 @@ export function claimsAreSupported(text: string, facts: GroundingFacts, supporte
   }
 
   // Lifts: "Lift N" must be one of the disruptions the decision rests on.
-  const liftNames = new Set(facts.disruptions.map((d) => d.name.toLowerCase()));
+  const labels = [...facts.disruptions.map((d) => d.label), ...facts.unrelated.map((d) => d.label)].map((l) => l.toLowerCase());
   for (const match of text.matchAll(/\blift\s+\d+\b/gi)) {
-    if (!liftNames.has(match[0].toLowerCase().replace(/\s+/g, ' '))) return false;
+    if (!labels.some((label) => label.includes(match[0].toLowerCase().replace(/\s+/g, ' ')))) return false;
   }
   if (facts.action === 'REROUTED' && facts.disruptions.length === 0) return false;
   return true;

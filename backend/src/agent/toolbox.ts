@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import * as z from 'zod/v4';
 import type { DecisionAction, RouteResult, RoutingGraph } from '../graph/routing.js';
+import { lineConnectionId, parseConnection, stationConnectionId } from '../network/connections.js';
+import { demoDisruptionCatalogue } from './demoDisruptions.js';
 import type { LiftDisruptionSource } from '../tfl/liftDisruptions.js';
 import type { AgentState, StoredRoute } from './state.js';
 
@@ -10,7 +12,7 @@ const stationText = z.string().trim().min(1).max(80);
 const connectionId = z
   .string()
   .trim()
-  .regex(/^[A-Za-z0-9 _.\-]{1,64}$/, 'Not a valid connection id');
+  .regex(/^[A-Za-z0-9 _.:\-]{1,64}$/, 'Not a valid connection id');
 const connectionIds = z.array(connectionId).max(20);
 const sessionId = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/, 'Not a valid session id');
 const routeId = z.string().regex(/^[a-f0-9]{12}$/, 'Not a valid route id');
@@ -59,7 +61,7 @@ export type ToolName =
   | 'resolve_station'
   | 'plan_step_free_journey'
   | 'inspect_route_dependencies'
-  | 'get_accessibility_disruptions'
+  | 'get_journey_disruptions'
   | 'find_alternative_route'
   | 'find_backup_route'
   | 'record_journey_decision';
@@ -68,7 +70,7 @@ export const TOOL_NAMES: ToolName[] = [
   'resolve_station',
   'plan_step_free_journey',
   'inspect_route_dependencies',
-  'get_accessibility_disruptions',
+  'get_journey_disruptions',
   'find_alternative_route',
   'find_backup_route',
   'record_journey_decision',
@@ -113,7 +115,7 @@ export type BackupToolResult =
   | { status: 'NO_BACKUP'; available: false; primaryRouteId: string; candidatesChecked: number; reason: string };
 
 /** Most single connections tried as the "what if this one fails" case when looking for Plan B. */
-export const MAX_BACKUP_CANDIDATES = 8;
+export const MAX_BACKUP_CANDIDATES = 12;
 
 /** Which stations and lines a journey uses, ignoring which of several equal platforms it happens to use. Two routes with the same signature are the same journey. */
 export function routeSignature(route: RouteResult): string {
@@ -122,13 +124,26 @@ export function routeSignature(route: RouteResult): string {
     .join('|');
 }
 
+/** One disruption, whatever its type. A lift, a station and a line are all just a connection id that is unavailable. */
 export interface DisruptionItem {
+  kind: 'LIFT' | 'STATION' | 'LINE';
+  /** The connection id: a LiftUniqueId, STATION:<id> or LINE:<line>. */
+  id: string;
+  /** Same as id; kept for callers written for lifts. */
   connectionId: string;
-  stationId: string;
-  station: string;
+  /** What is affected, as a noun phrase: "Green Park Lift 2", "Green Park station", "Jubilee line". */
+  label: string;
+  /** Closed stations are closed; lifts and lines are unavailable. */
+  closed: boolean;
+  /** True for Demo Mode's controlled events; false for real TfL data. */
+  simulated: boolean;
+  stationId: string | null;
+  station: string | null;
   name: string;
   message: string;
-  /** True when the caller listed this connection as relevant to the current journey. */
+  /** What the graph loses while this is active (one id for each thing taken out). */
+  affectedConnectionIds: string[];
+  /** True when the caller listed this connection as one the current journey depends on. */
   relevant: boolean;
 }
 
@@ -136,6 +151,7 @@ export interface DisruptionToolResult {
   mode: 'demo' | 'live';
   source: 'demo_simulation' | 'tfl_live';
   fetchedAt: string | null;
+  active: boolean;
   activeCount: number;
   disruptions: DisruptionItem[];
 }
@@ -166,12 +182,12 @@ export interface ToolboxDeps {
 /** The six operations behind the MCP tools. Each one runs a fixed, parameterised query; none accepts query text. */
 export class StepFreeToolbox {
   private readonly liftsById;
-  private readonly demoLift;
+  private readonly demoCatalogue;
 
   constructor(private readonly deps: ToolboxDeps) {
     const { network } = deps.routing;
     this.liftsById = new Map(network.lifts.map((l) => [l.liftUniqueId, l]));
-    this.demoLift = this.liftsById.get(network.demoOutage.liftUniqueId)!;
+    this.demoCatalogue = demoDisruptionCatalogue(network);
   }
 
   async resolveStation(input: z.infer<typeof resolveStationInput>) {
@@ -195,22 +211,35 @@ export class StepFreeToolbox {
     return describeDependencies(stored, this.deps.routing.network.stations);
   }
 
-  async getAccessibilityDisruptions(input: z.infer<typeof disruptionsInput>): Promise<DisruptionToolResult> {
+  /**
+   * What is currently unavailable, as one list whatever the type. Demo Mode: the single simulated event the user
+   * activated (a lift, a station or a line). Live Mode: TfL's real lift disruptions.
+   */
+  async getJourneyDisruptions(input: z.infer<typeof disruptionsInput>): Promise<DisruptionToolResult> {
     const relevant = new Set(input.relevantConnectionIds ?? []);
-    const toItem = (d: { liftUniqueId: string; stationId: string; friendlyName: string; message: string }): DisruptionItem => ({
-      connectionId: d.liftUniqueId,
-      stationId: d.stationId,
-      station: this.deps.routing.network.stations.find((s) => s.id === d.stationId)?.name ?? d.stationId,
-      name: d.friendlyName,
-      message: d.message,
-      relevant: relevant.has(d.liftUniqueId),
-    });
+    const stationName = (id: string | null) => (id ? (this.deps.routing.network.stations.find((s) => s.id === id)?.name ?? id) : null);
     if (input.mode === 'demo') {
       const session = input.sessionId ? this.deps.state.sessions.get(input.sessionId) : undefined;
-      const active = session?.demoOutage
-        ? [toItem({ liftUniqueId: this.demoLift.liftUniqueId, stationId: this.demoLift.stationId, friendlyName: this.demoLift.friendlyName, message: 'Simulated outage (Demo Mode).' })]
+      const event = session?.demoDisruption ? this.demoCatalogue[session.demoDisruption] : undefined;
+      const active: DisruptionItem[] = event
+        ? [
+            {
+              kind: event.kind,
+              id: event.id,
+              connectionId: event.id,
+              label: event.label,
+              closed: event.closed,
+              simulated: true,
+              stationId: event.stationId,
+              station: stationName(event.stationId),
+              name: event.label,
+              message: 'Simulated Demo Mode event.',
+              affectedConnectionIds: [event.id],
+              relevant: relevant.has(event.id),
+            },
+          ]
         : [];
-      return { mode: 'demo', source: 'demo_simulation', fetchedAt: null, activeCount: active.length, disruptions: active };
+      return { mode: 'demo', source: 'demo_simulation', fetchedAt: null, active: active.length > 0, activeCount: active.length, disruptions: active };
     }
     let snapshot;
     try {
@@ -218,15 +247,29 @@ export class StepFreeToolbox {
     } catch {
       throw new ToolError('TFL_UNAVAILABLE', 'Live TfL lift data is unavailable.');
     }
-    const items = snapshot.disruptions.map(toItem);
-    return { mode: 'live', source: 'tfl_live', fetchedAt: snapshot.fetchedAt, activeCount: items.length, disruptions: items };
+    const items: DisruptionItem[] = snapshot.disruptions.map((d) => ({
+      kind: 'LIFT',
+      id: d.liftUniqueId,
+      connectionId: d.liftUniqueId,
+      label: `${stationName(d.stationId)} ${d.friendlyName}`,
+      closed: false,
+      simulated: false,
+      stationId: d.stationId,
+      station: stationName(d.stationId),
+      name: d.friendlyName,
+      message: d.message,
+      affectedConnectionIds: [d.liftUniqueId],
+      relevant: relevant.has(d.liftUniqueId),
+    }));
+    return { mode: 'live', source: 'tfl_live', fetchedAt: snapshot.fetchedAt, active: items.length > 0, activeCount: items.length, disruptions: items };
   }
 
   /**
    * Plan B: the best valid step-free route that is genuinely different from the primary one, found by FalkorDB.
-   * For each lift the primary route uses, FalkorDB is asked for the shortest route in a graph where that lift
-   * (and anything currently unavailable) is out. Candidates that are the same journey are rejected; the fastest
-   * distinct one wins. A lift with a working alternative changes nothing and is skipped without a query.
+   * For each connection the primary route uses (a lift, a station, a line), FalkorDB is asked for the shortest route
+   * in a graph where that connection (and anything currently unavailable) is out. Candidates that are the same journey
+   * are rejected; the fastest distinct one wins. A connection with a working alternative changes nothing and is
+   * skipped without a query.
    */
   async findBackupRoute(input: z.infer<typeof backupInput>): Promise<BackupToolResult> {
     const { routing, state } = this.deps;
@@ -237,22 +280,26 @@ export class StepFreeToolbox {
     if (origin.id !== primary.origin.id || destination.id !== primary.destination.id) {
       throw new ToolError('INVALID_ARGUMENT', 'That route does not connect these stations.');
     }
-    for (const id of input.unavailableConnectionIds ?? []) if (!this.liftsById.has(id)) throw new ToolError('INVALID_ARGUMENT', `Unknown connection id ${id}.`);
+    this.assertConnections(input.unavailableConnectionIds ?? []);
     primary.dependencies ??= await routing.routeDependencies(primary.route.graph, primary.route.transferIds);
     const used = describeDependencies(primary, routing.network.stations).allConnectionIds;
     const considered = input.primaryConnectionIds ?? used;
     for (const id of considered) if (!used.includes(id)) throw new ToolError('INVALID_ARGUMENT', `${id} is not a connection this route uses.`);
 
     const active = [...new Set([...(input.unavailableConnectionIds ?? []), ...primary.excludedConnectionIds])].sort();
-    const baseline = routing.unavailableTransfers(active).sort().join('|');
+    const lostBy = (ids: string[]) => {
+      const fx = routing.effects(ids);
+      return `${fx.transferIds.join('|')}#${fx.lines.join('|')}`;
+    };
+    const baseline = lostBy(active);
     const primarySignature = routeSignature(primary.route);
     const seen = new Set<string>();
     let best: { route: RouteResult; excluded: string[]; lift: string } | null = null;
     let checked = 0;
     for (const lift of considered.slice(0, MAX_BACKUP_CANDIDATES)) {
       const excluded = [...new Set([...active, lift])].sort();
-      const lost = routing.unavailableTransfers(excluded).sort().join('|');
-      if (lost === baseline || seen.has(lost)) continue; // this lift has a working alternative, or was already tried
+      const lost = lostBy(excluded);
+      if (lost === baseline || seen.has(lost)) continue; // it has a working alternative, or the same loss was already tried
       seen.add(lost);
       checked++;
       const scenario = await routing.scenarioGraph(excluded);
@@ -291,11 +338,7 @@ export class StepFreeToolbox {
     if (!origin || !destination) throw new ToolError('INVALID_ARGUMENT', 'Origin and destination must be supported stations.');
     const session = state.sessions.get(input.sessionId);
     if (!session) throw new ToolError('NOT_FOUND', 'Unknown journey session.');
-    const affected = (input.affectedConnectionIds ?? []).map((id) => {
-      const lift = this.liftsById.get(id);
-      if (!lift) throw new ToolError('INVALID_ARGUMENT', `Unknown connection id ${id}.`);
-      return lift;
-    });
+    const affected = this.assertConnections(input.affectedConnectionIds ?? []);
     let storedRouteId: string | null = null;
     let routeDuration: number | null = null;
     if (input.action === 'NO_ROUTE') {
@@ -319,13 +362,23 @@ export class StepFreeToolbox {
       reasonCode: input.reasonCode,
       routeId: storedRouteId,
       routeDuration,
-      affectedConnectionIds: affected.map((l) => l.liftUniqueId),
-      affectedStationIds: [...new Set(affected.map((l) => l.stationId))],
+      affectedConnectionIds: affected.map((c) => c.id),
+      affectedStationIds: [...new Set(affected.flatMap((c) => (c.kind === 'LINE' ? [] : [c.stationId])))],
+      disruptionKind: affected.length === 0 ? '' : [...new Set(affected.map((c) => c.kind))].join('+'),
       routeHealth: input.routeHealth ?? null,
       backupAvailable: backup ? backup.available : null,
       backupRouteId: backup?.routeId ?? null,
     });
     return { recorded: true as const, decisionId, action: input.action, routeId: storedRouteId, durationMinutes: routeDuration };
+  }
+
+  /** Every id must name a lift, a supported station (STATION:x) or an Underground line (LINE:x). */
+  private assertConnections(ids: string[]) {
+    return ids.map((id) => {
+      const connection = parseConnection(this.deps.routing.network, id);
+      if (!connection) throw new ToolError('INVALID_ARGUMENT', `Unknown connection id ${id}.`);
+      return connection;
+    });
   }
 
   /** Keep a graph-returned route (and its accessibility dependencies) so later tools can refer to it by id. */
@@ -355,7 +408,7 @@ export class StepFreeToolbox {
 
   private async computeRoute(originText: string, destinationText: string, excluded: string[], source: StoredRoute['source']): Promise<RouteToolResult> {
     const { routing, state } = this.deps;
-    for (const id of excluded) if (!this.liftsById.has(id)) throw new ToolError('INVALID_ARGUMENT', `Unknown connection id ${id}.`);
+    this.assertConnections(excluded);
     const [origin, destination] = await Promise.all([routing.resolveStation(originText), routing.resolveStation(destinationText)]);
     const unknown = [!origin && originText, !destination && destinationText].filter((x): x is string => Boolean(x));
     if (!origin || !destination) return { status: 'UNKNOWN_STATION', unknown };
@@ -377,6 +430,10 @@ export function describeDependencies(stored: StoredRoute, stations: { id: string
   const names = new Map(stations.map((s) => [s.id, s.name]));
   const dependencies = stored.dependencies ?? [];
   const unique = (values: string[]) => [...new Set(values)];
+  // Beyond its lifts, a route depends on every station where it enters, leaves or changes, and on every line it rides
+  // alone (a ride shared with another line survives one of them being down).
+  const stationIds = unique(dependencies.map((d) => stationConnectionId(d.stationId)));
+  const lineIds = unique(stored.route.legs.flatMap((leg) => (leg.type === 'ride' && leg.lines.length === 1 ? [lineConnectionId(leg.lines[0])] : [])));
   return {
     routeId: stored.id,
     dependencies: dependencies.map((d) => ({
@@ -387,8 +444,8 @@ export function describeDependencies(stored: StoredRoute, stations: { id: string
       lifts: d.lifts,
       requiredConnectionIds: d.requiredLifts,
     })),
-    requiredConnectionIds: unique(dependencies.flatMap((d) => d.requiredLifts)),
-    allConnectionIds: unique(dependencies.flatMap((d) => d.lifts)),
+    requiredConnectionIds: unique([...dependencies.flatMap((d) => d.requiredLifts), ...lineIds, ...stationIds]),
+    allConnectionIds: unique([...dependencies.flatMap((d) => d.lifts), ...lineIds, ...stationIds]),
   };
 }
 

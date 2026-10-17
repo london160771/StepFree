@@ -42,8 +42,8 @@ export interface PlanBView {
   route: RouteResult | null;
   stations: string[];
   lines: string[];
-  /** The connections whose loss this backup survives. */
-  avoided: { connectionId: string; station: string; name: string }[];
+  /** The connections whose loss this backup survives (a lift, a station or a line). */
+  avoided: { connectionId: string; kind: 'LIFT' | 'STATION' | 'LINE'; label: string }[];
   routeSignature: string | null;
 }
 
@@ -51,7 +51,7 @@ export function planBView(
   backup: BackupToolResult | undefined,
   route: RouteResult | undefined,
   stationName: (id: string) => string,
-  liftName: (connectionId: string) => { station: string; name: string },
+  describe: (connectionId: string) => { kind: 'LIFT' | 'STATION' | 'LINE'; label: string },
 ): PlanBView {
   if (!backup || !backup.available || !route) {
     return { available: false, durationMinutes: null, extraMinutes: null, route: null, stations: [], lines: [], avoided: [], routeSignature: null };
@@ -63,7 +63,7 @@ export function planBView(
     route,
     stations: route.stations.map(stationName),
     lines: lineLabels(route),
-    avoided: backup.avoidedConnectionIds.map((connectionId) => ({ connectionId, ...liftName(connectionId) })),
+    avoided: backup.avoidedConnectionIds.map((connectionId) => ({ connectionId, ...describe(connectionId) })),
     routeSignature: backup.routeSignature,
   };
 }
@@ -79,33 +79,52 @@ export interface WhyThisRoute {
   reasons: string[];
 }
 
+export interface WhyDisruption {
+  kind: 'LIFT' | 'STATION' | 'LINE';
+  label: string;
+  closed: boolean;
+  simulated: boolean;
+}
+
 /** The plain-language reasons for the chosen route, assembled from structured results. Normal users never see graph terms. */
 export function whyThisRoute(input: {
   health: RouteHealth;
   route: RouteResult;
-  requiredCount: number;
+  /** Lifts on the route with no step-free alternative. */
+  requiredLiftCount: number;
   planB: PlanBView;
-  /** Disrupted connections that the previous route needed (REROUTED only), as "Green Park Lift 2". */
-  avoidedNames: string[];
+  /** The disruptions the previous route depended on (REROUTED only). */
+  affected: WhyDisruption[];
+  /** Active disruptions that do not touch this route. */
+  unrelated: WhyDisruption[];
 }): WhyThisRoute {
-  const { health, route, requiredCount, planB, avoidedNames } = input;
+  const { health, route, requiredLiftCount, planB, affected, unrelated } = input;
   const reasons: string[] = [];
+  const state = (d: WhyDisruption) => (d.closed ? 'closed' : 'unavailable');
+  const previously = (d: WhyDisruption) =>
+    d.kind === 'LIFT'
+      ? `Your previous route depended on ${d.label}, which is ${state(d)}`
+      : d.kind === 'STATION'
+        ? `Your previous journey needed ${d.label}, which is ${state(d)}`
+        : `Your previous journey used the ${d.label}, which is ${state(d)}`;
   if (health.status === 'REROUTED') {
-    const list = avoidedNames.length > 0 ? avoidedNames.join(' and ') : 'a lift on your previous route';
-    reasons.push(`${list} ${avoidedNames.length > 1 ? 'are' : 'is'} unavailable, so this is the fastest step-free route that avoids ${avoidedNames.length > 1 ? 'them' : 'it'}`);
-    reasons.push('None of the lifts it needs are reported unavailable');
+    if (affected.length === 0) reasons.push('Something your previous route depended on is unavailable');
+    for (const d of affected) reasons.push(previously(d));
+    reasons.push('This is the fastest step-free route that avoids it');
+    reasons.push('Nothing this route needs is reported unavailable');
   } else if (health.status === 'AFFECTED') {
-    reasons.push('The shortest step-free route found, but a lift it needs is currently unavailable');
+    reasons.push('The shortest step-free route found, but something it needs is currently unavailable');
   } else {
     reasons.push('The shortest step-free route that is currently usable');
     reasons.push('All the lifts and step-free connections it needs are working right now');
   }
+  for (const d of unrelated) reasons.push(`The ${d.simulated ? 'simulated ' : ''}${d.label} being ${state(d)} does not affect this journey`);
   reasons.push(`About ${route.totalMinutes} minutes, including time in stations`);
   const labels = [...new Set(lineLabels(route))];
   if (labels.length > 0) reasons.push(`Travels on the ${labels.map((l) => `${l} line`).join(', then the ')}`);
   const changes = route.legs.filter((l) => l.type === 'transfer' && l.kind === 'interchange').length;
   reasons.push(changes === 0 ? 'No changes of line' : `${changes} change${changes === 1 ? '' : 's'} of line, each step-free`);
-  reasons.push(requiredCount === 0 ? 'Does not depend on any single lift' : `${requiredCount} lift${requiredCount === 1 ? '' : 's'} it cannot do without`);
+  reasons.push(requiredLiftCount === 0 ? 'Does not depend on any single lift' : `${requiredLiftCount} lift${requiredLiftCount === 1 ? '' : 's'} it cannot do without`);
   reasons.push(
     planB.available
       ? `A backup route is ready if this one becomes unusable${planB.extraMinutes ? ` (+${planB.extraMinutes} min)` : ''}`

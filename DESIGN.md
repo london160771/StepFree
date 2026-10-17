@@ -58,16 +58,17 @@ Below the route result, a compact, collapsed-by-default disclosure titled **How 
 
 ## Demo Mode flow
 
-1. The user selects **Demo**.
-2. The user chooses From and To, then taps **Find Step-Free Route**. The baseline example is Victoria to London Bridge via Green Park.
-3. The route is drawn over the station graph. Keep the route and transfer links visually distinct.
-4. Show a prominent **Simulate lift outage** action.
-5. On activation, label the event **Lift unavailable at Green Park**. Pulse the affected station red and identify the affected lift/pathway with its lift icon.
-6. The app reports the outage to the journey agent, fades the old route and shows **Finding another step-free route…** while the agent re-checks the journey.
-7. Draw the route returned by FalkorDB: use the District line from Victoria to Westminster, passing St James's Park without alighting, then the Jubilee line to London Bridge via Waterloo and Southwark.
-8. Present the updated route and travel time as a calm success state.
+Demo Mode is the primary experience, for anyone anywhere. It never asks for location.
 
-The demo outage affects the specific verified Green Park step-free pathway/transfer. Do not color the whole station as inaccessible or imply that St James's Park needs step-free access for this journey.
+1. The user selects **Demo**. Beside the From / To pickers (which stay available for other journeys) a prominent **Run Judge Demo** button sets Victoria → London Bridge, clears any simulated event and runs the healthy journey.
+2. The route is drawn over the station graph, with Route Health **Clear**, Plan B, **Why this route?** and **How StepFree decided**. No disruption is triggered automatically.
+3. A compact **Simulate disruption** control follows: a select with exactly three options (**Lift outage**, **Station closure**, **Line disruption**, each with what it affects) and a **Simulate** button. It is labelled as a Demo Mode event, not a real TfL disruption.
+4. On activation, a banner reads **Simulated disruption: Green Park Lift 2 unavailable** (or **Green Park station closed**, or **Jubilee line unavailable**). Affected stations pulse red on the map: the station for a lift or station event, the stations the journey rides that line through for a line event.
+5. The app reports the event to the journey agent, fades the old route and shows **Finding another step-free route…** while the agent checks whether the journey is affected.
+6. If it is affected, draw the route returned by FalkorDB and show Route Health **Rerouted** with Plan B recalculated for the new route. If it is not, the banner says the disruption does not affect the journey and the route stays (Route Health stays Clear).
+7. **Reset demo** starts a clean Demo journey (no stale event, route or exclusions) and brings back the Simulate control.
+
+Only one simulated event is active at a time. Do not color a whole station as inaccessible for a lift event, and do not imply any of the three events is a real current TfL disruption.
 
 ## Live Mode flow
 

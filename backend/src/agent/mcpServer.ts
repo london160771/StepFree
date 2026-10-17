@@ -70,14 +70,14 @@ export function createStepFreeMcpServer(toolbox: StepFreeToolbox): McpServer {
   );
 
   server.registerTool(
-    'get_accessibility_disruptions',
+    'get_journey_disruptions',
     {
       description:
         'Get the lifts currently out of service in the supported network. In demo mode this is the controlled demo outage; in live mode it is the real TfL lift disruption feed. ' +
         'Pass relevantConnectionIds (the route requiredConnectionIds) so each disruption is flagged relevant or not.',
       inputSchema: disruptionsInput,
     },
-    (input) => respond(() => toolbox.getAccessibilityDisruptions(input)),
+    (input) => respond(() => toolbox.getJourneyDisruptions(input)),
   );
 
   server.registerTool(

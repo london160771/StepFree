@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { FalkorDB } from 'falkordb';
 import { buildAreaGraph, unavailableTransferIds, type AreaGraph } from '../network/stepfree.js';
+import { parseConnection } from '../network/connections.js';
 import { stationAliases, stationKey } from '../network/names.js';
 import type { LineId, Network } from '../network/types.js';
 
@@ -75,6 +76,8 @@ export interface DecisionRecord {
   routeDuration: number | null;
   affectedConnectionIds: string[];
   affectedStationIds: string[];
+  /** LIFT, STATION or LINE (joined with + if several), or empty. */
+  disruptionKind?: string;
   /** Factual state at decision time: CLEAR, AFFECTED, REROUTED or NO_ROUTE. */
   routeHealth?: string | null;
   backupAvailable?: boolean | null;
@@ -82,7 +85,7 @@ export interface DecisionRecord {
 }
 
 export interface GraphEdge {
-  type: 'RIDE' | 'STEP_FREE_TRANSFER' | 'UNAVAILABLE_TRANSFER';
+  type: 'RIDE' | 'STEP_FREE_TRANSFER' | 'UNAVAILABLE_TRANSFER' | 'UNAVAILABLE_RIDE';
   id: string | null;
   from: string;
   to: string;
@@ -181,27 +184,50 @@ export class RoutingGraph {
     );
   }
 
-  /** Transfers TfL topology says cannot work without the given lifts. */
-  unavailableTransfers(unavailableLifts: Iterable<string>): string[] {
-    return unavailableTransferIds(this.areaGraph, this.network.transfers, new Set(unavailableLifts));
+  /**
+   * What a set of unavailable connections (lift ids, STATION:x, LINE:x) takes out of the graph.
+   * - a lift removes every step-free transfer TfL topology says cannot work without it;
+   * - a closed station removes every step-free transfer at it (street access, platform access and interchange), while
+   *   trains keep running through it, so rides along the line are untouched;
+   * - a disrupted line removes the rides that only that line provides (a ride shared with another line stays).
+   */
+  effects(connectionIds: Iterable<string>): { transferIds: string[]; lines: LineId[] } {
+    const lifts = new Set<string>();
+    const stations = new Set<string>();
+    const lines = new Set<LineId>();
+    for (const id of connectionIds) {
+      const connection = parseConnection(this.network, id);
+      if (connection?.kind === 'LIFT') lifts.add(connection.liftUniqueId);
+      else if (connection?.kind === 'STATION') stations.add(connection.stationId);
+      else if (connection?.kind === 'LINE') lines.add(connection.line);
+    }
+    const transferIds = new Set(unavailableTransferIds(this.areaGraph, this.network.transfers, lifts));
+    for (const transfer of this.network.transfers) if (stations.has(transfer.stationId)) transferIds.add(transfer.id);
+    return { transferIds: [...transferIds].sort(), lines: [...lines].sort() };
   }
 
-  /** Name of the FalkorDB graph that reflects the given unavailable lifts, creating it if needed. */
-  async scenarioGraph(unavailableLifts: Iterable<string>): Promise<{ name: string; unavailableTransferIds: string[] }> {
-    const transferIds = this.unavailableTransfers(unavailableLifts).sort();
-    if (transferIds.length === 0) return { name: this.prefix, unavailableTransferIds: [] };
-    const name = `${this.prefix}:${createHash('sha1').update(transferIds.join('|')).digest('hex').slice(0, 12)}`;
+  /** Transfers that cannot be used while the given connections are unavailable. */
+  unavailableTransfers(unavailable: Iterable<string>): string[] {
+    return this.effects(unavailable).transferIds;
+  }
+
+  /** Name of the FalkorDB graph that reflects the given unavailable connections (lifts, stations, lines), creating it if needed. */
+  async scenarioGraph(unavailable: Iterable<string>): Promise<{ name: string; unavailableTransferIds: string[]; disabledLines: LineId[] }> {
+    const { transferIds, lines } = this.effects(unavailable);
+    if (transferIds.length === 0 && lines.length === 0) return { name: this.prefix, unavailableTransferIds: [], disabledLines: [] };
+    const key = `${transferIds.join('|')}#${lines.join('|')}`;
+    const name = `${this.prefix}:${createHash('sha1').update(key).digest('hex').slice(0, 12)}`;
     let ready = this.scenarios.get(name);
     if (!ready) {
-      ready = this.createScenario(name, transferIds);
+      ready = this.createScenario(name, transferIds, lines);
       this.scenarios.set(name, ready);
       ready.catch(() => this.scenarios.delete(name));
     }
     await ready;
-    return { name, unavailableTransferIds: transferIds };
+    return { name, unavailableTransferIds: transferIds, disabledLines: lines };
   }
 
-  private async createScenario(name: string, transferIds: string[]): Promise<void> {
+  private async createScenario(name: string, transferIds: string[], lines: LineId[]): Promise<void> {
     if ((await this.db.list()).includes(name)) await this.db.selectGraph(name).delete();
     await this.db.selectGraph(this.prefix).copy(name);
     await this.db.selectGraph(name).query(
@@ -211,6 +237,16 @@ export class RoutingGraph {
        DELETE t`,
       { params: { ids: transferIds } },
     );
+    if (lines.length > 0) {
+      // A ride is lost only if every line that serves it is disrupted.
+      await this.db.selectGraph(name).query(
+        `MATCH (a)-[r:RIDE]->(b)
+         WHERE ALL(l IN r.lines WHERE l IN $lines)
+         CREATE (a)-[:UNAVAILABLE_RIDE {line: r.line, lines: r.lines, minutes: r.minutes, via: r.via, viaCount: r.viaCount}]->(b)
+         DELETE r`,
+        { params: { lines } },
+      );
+    }
   }
 
   /** Weighted shortest step-free path between two stations' street entrances, computed by FalkorDB. */
@@ -282,10 +318,10 @@ export class RoutingGraph {
        CREATE (s)-[:HAS_DECISION]->(x:AgentDecision {
          id: $decisionId, action: $action, reasonCode: $reasonCode, createdAt: $now,
          routeId: $routeId, routeDuration: $routeDuration, affectedConnectionIds: $affectedConnectionIds,
-         routeHealth: $routeHealth, backupAvailable: $backupAvailable, backupRouteId: $backupRouteId
+         routeHealth: $routeHealth, backupAvailable: $backupAvailable, backupRouteId: $backupRouteId, disruptionKind: $disruptionKind
        })`,
       // Always set (never null) so every AgentDecision has the same properties.
-      { params: { ...record, routeHealth: record.routeHealth ?? 'UNKNOWN', backupAvailable: record.backupAvailable ?? false, backupRouteId: record.backupRouteId ?? '', decisionId, now } },
+      { params: { ...record, routeHealth: record.routeHealth ?? 'UNKNOWN', backupAvailable: record.backupAvailable ?? false, backupRouteId: record.backupRouteId ?? '', disruptionKind: record.disruptionKind ?? '', decisionId, now } },
     );
     if (record.affectedStationIds.length > 0) {
       await graph.query(

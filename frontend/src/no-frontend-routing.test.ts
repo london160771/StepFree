@@ -29,7 +29,10 @@ describe('FalkorDB is the only router', () => {
     expect(hook).toContain('api.agentJourney(');
     expect(hook).not.toContain('api.route(');
     // The app reports the outage (demoOutage) and shows what the agent decided.
-    expect(hook).toContain('demoOutage: true');
+    // The app reports which simulated event was activated and shows what the agent decided: it never decides that a
+    // station closure or a line disruption means a reroute.
+    expect(hook).toContain('demoDisruption: kind');
+    expect(hook).not.toMatch(/kind === 'STATION'|kind === 'LINE'|\.kind === 'LIFT'/);
     expect(hook).not.toMatch(/route:\s*\{[^}]*stations:\s*\[/);
   });
 });

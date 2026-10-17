@@ -15,7 +15,7 @@ describe('How StepFree decided', () => {
       <DecisionTrace
         trace={[
           entry(1, 'plan_step_free_journey', 'Asked FalkorDB for a step-free route: 35 min via Victoria, Green Park'),
-          entry(2, 'get_accessibility_disruptions', 'Detected Green Park Lift 2 unavailable'),
+          entry(2, 'get_journey_disruptions', 'Detected Green Park Lift 2 unavailable'),
         ]}
       />,
     );

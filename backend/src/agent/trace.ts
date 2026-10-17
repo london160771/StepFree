@@ -59,12 +59,13 @@ export function compactResult(tool: string, result: any): unknown {
         connections: result.dependencies?.length ?? 0,
         requiredConnectionIds: result.requiredConnectionIds,
       };
-    case 'get_accessibility_disruptions':
+    case 'get_journey_disruptions':
       return {
         mode: result.mode,
         source: result.source,
         activeCount: result.activeCount,
-        disruptions: (result.disruptions ?? []).map((d: any) => ({ connectionId: d.connectionId, station: d.station, relevant: d.relevant })),
+        active: result.active,
+        disruptions: (result.disruptions ?? []).map((d: any) => ({ kind: d.kind, id: d.id, label: d.label, simulated: d.simulated, relevant: d.relevant })),
       };
     default:
       return result;
@@ -89,13 +90,12 @@ export function describeStep(tool: string, args: Record<string, any>, result: an
       const n = result.dependencies.length;
       return `Checked the ${n} accessibility connection${n === 1 ? '' : 's'} the route relies on`;
     }
-    case 'get_accessibility_disruptions': {
+    case 'get_journey_disruptions': {
+      const state = (d: any) => `${d.label} ${d.closed ? 'closed' : 'unavailable'}${d.simulated ? ' (simulated)' : ''}`;
       const relevant = result.disruptions.filter((d: any) => d.relevant);
-      if (relevant.length > 0) {
-        return `Detected ${relevant.map((d: any) => `${d.station} ${d.name}`).join(', ')} unavailable`;
-      }
-      if (result.activeCount === 0) return 'Checked lift status: no disruption affects this journey';
-      return `Checked lift status: ${result.activeCount} lift${result.activeCount === 1 ? ' is' : 's are'} out elsewhere, none on this route`;
+      if (relevant.length > 0) return `Detected ${relevant.map(state).join(', ')}`;
+      if (result.activeCount === 0) return 'Checked current disruptions: none affect this journey';
+      return `Checked current disruptions: ${result.disruptions.map(state).join(', ')}, but this journey does not depend on ${result.activeCount === 1 ? 'it' : 'them'}`;
     }
     case 'record_journey_decision':
       return `Recorded the decision (${ACTION_LABEL[result.action] ?? result.action})`;

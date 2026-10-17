@@ -36,6 +36,21 @@ export interface NetworkResponse {
   stations: Station[];
   edges: GraphEdge[];
   demoOutage: { liftUniqueId: string; stationId: string; friendlyName: string; affectedTransferIds: string[] };
+  /** The three controlled, simulated Demo Mode events. The app offers them; the agent decides what they mean for a journey. */
+  demoDisruptions: DemoDisruptionInfo[];
+}
+
+export type DemoDisruptionKind = 'LIFT' | 'STATION' | 'LINE';
+
+export interface DemoDisruptionInfo {
+  kind: DemoDisruptionKind;
+  id: string;
+  /** What is affected: "Green Park Lift 2", "Green Park station", "Jubilee line". */
+  label: string;
+  closed: boolean;
+  stationId: string | null;
+  line: LineId | null;
+  simulated: true;
 }
 
 export type Leg =
@@ -146,7 +161,17 @@ export interface AgentResponse {
   planB: PlanB | null;
   whyThisRoute: WhyThisRoute | null;
   dependencies: { station: string; kind: string; lifts: string[]; requiredConnectionIds: string[] }[];
-  disruptions: { connectionId: string; station: string; name: string; message: string }[];
+  disruptions: {
+    kind: DemoDisruptionKind;
+    id: string;
+    label: string;
+    closed: boolean;
+    simulated: boolean;
+    stationId: string | null;
+    station: string | null;
+    message: string;
+    affectedConnectionIds: string[];
+  }[];
   trace: TraceEntry[];
 }
 
@@ -185,9 +210,9 @@ export const api = {
   network: () => request<NetworkResponse>('/api/network'),
   /**
    * Ask the journey agent. The first call starts a journey; a call with the same sessionId makes the agent re-check it
-   * (for example once the Demo Mode outage is triggered). The agent decides; this app only reports what changed.
+   * (for example once a simulated Demo Mode disruption is activated). The agent decides; this app only reports what changed.
    */
-  agentJourney: async (body: { origin?: string; destination?: string; mode: Mode; sessionId?: string; demoOutage?: boolean }): Promise<AgentResponse> => {
+  agentJourney: async (body: { origin?: string; destination?: string; mode: Mode; sessionId?: string; demoDisruption?: DemoDisruptionKind | null }): Promise<AgentResponse> => {
     try {
       return await request<AgentResponse>('/api/agent/journey', { method: 'POST', body: JSON.stringify(body), keepErrorBody: true });
     } catch (error) {

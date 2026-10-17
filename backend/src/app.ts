@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { AGENT_UNAVAILABLE_MESSAGE } from './agent/grounding.js';
 import type { AgentRuntime } from './agent/index.js';
+import { DEMO_DISRUPTION_KINDS, demoDisruptionCatalogue, type DemoDisruptionKind } from './agent/demoDisruptions.js';
 import { mcpHandler } from './agent/mcpServer.js';
 import type { RoutingGraph } from './graph/routing.js';
 import { isInLondon, nearestStation } from './network/geo.js';
@@ -28,6 +29,7 @@ export function createApp({ routing, liveDisruptions, agent, corsOrigin }: AppDe
   const { network } = routing;
   const stationIds = new Set(network.stations.map((s) => s.id));
   const demoLift = network.lifts.find((l) => l.liftUniqueId === network.demoOutage.liftUniqueId)!;
+  const demoCatalogue = demoDisruptionCatalogue(network);
 
   app.use(express.json());
 
@@ -54,6 +56,11 @@ export function createApp({ routing, liveDisruptions, agent, corsOrigin }: AppDe
         friendlyName: network.demoOutage.friendlyName,
         affectedTransferIds: network.demoOutage.affectedTransferIds,
       },
+      // The three controlled Demo Mode events (simulated, one at a time). The app only offers them; the agent decides what they mean for a journey.
+      demoDisruptions: DEMO_DISRUPTION_KINDS.map((kind) => {
+        const { id, label, closed, stationId, line } = demoCatalogue[kind];
+        return { kind, id, label, closed, stationId, line, simulated: true };
+      }),
       source: { topologyFeedStartDate: network.source.topologyFeedStartDate },
     });
   });
@@ -100,10 +107,10 @@ export function createApp({ routing, liveDisruptions, agent, corsOrigin }: AppDe
    * example after the Demo Mode outage is triggered or cleared). The agent, not this handler, decides what to do.
    */
   app.post('/api/agent/journey', async (req, res) => {
-    const { origin, destination, mode, sessionId, demoOutage } = req.body ?? {};
+    const { origin, destination, mode, sessionId, demoDisruption } = req.body ?? {};
     if (mode !== 'demo' && mode !== 'live') throw new HttpError(400, 'Mode must be demo or live.');
     if (sessionId !== undefined && (typeof sessionId !== 'string' || !/^[A-Za-z0-9_-]{8,64}$/.test(sessionId))) throw new HttpError(400, 'Invalid session.');
-    if (demoOutage !== undefined && typeof demoOutage !== 'boolean') throw new HttpError(400, 'demoOutage must be true or false.');
+    if (demoDisruption !== undefined && demoDisruption !== null && !DEMO_DISRUPTION_KINDS.includes(demoDisruption)) throw new HttpError(400, 'demoDisruption must be LIFT, STATION, LINE or null.');
     const resuming = typeof sessionId === 'string' && Boolean(agent?.state.sessions.has(sessionId));
     if (!resuming && [origin, destination].some((v) => typeof v !== 'string' || v.trim() === '' || v.length > 80)) {
       throw new HttpError(400, 'Choose two stations.');
@@ -112,7 +119,7 @@ export function createApp({ routing, liveDisruptions, agent, corsOrigin }: AppDe
       res.status(503).json({ status: 'AGENT_UNAVAILABLE', message: AGENT_UNAVAILABLE_MESSAGE, trace: [] });
       return;
     }
-    const result = await agent.agent.run({ origin, destination, mode, sessionId, demoOutage });
+    const result = await agent.agent.run({ origin, destination, mode, sessionId, demoDisruption: demoDisruption as DemoDisruptionKind | null | undefined });
     const unavailable = result.status === 'AGENT_UNAVAILABLE' || result.status === 'TFL_UNAVAILABLE';
     res.status(unavailable ? 503 : result.status === 'AGENT_FAILED' ? 502 : 200).json(result);
   });

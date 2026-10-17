@@ -17,7 +17,7 @@ This is a proof of concept covering 17 London Underground stations: Victoria, Gr
 **Track 01 — Agents That Act on Connected Data.** StepFree is a journey agent: it uses the graph to decide and act, and shows how it decided.
 
 ```text
-Frontend (From / To, Simulate lift outage)
+Frontend (Run Judge Demo, From / To, Simulate disruption)
   → POST /api/agent/journey
   → Agent host (backend)         Gemini (gemini-3.8-flash) picks the next tool
   → MCP client                   tools/list → the model's tool catalogue, tools/call → execution
@@ -36,7 +36,7 @@ What makes it an agent rather than a route lookup:
 Safety rules the host enforces, independent of the model:
 
 - The model never writes Cypher and never computes a route. There is no query tool. Every graph operation is fixed Cypher in `backend/src/graph/routing.ts` with parameters; tool arguments are validated with Zod (types, enums, lengths, array limits, id patterns), then checked against the graph (unknown stations and unknown lift ids are refused).
-- A route can only be selected if `plan_step_free_journey` returned it; a reroute needs `find_alternative_route` plus a disruption, reported by `get_accessibility_disruptions`, on a connection the current route requires; a disruption can only be claimed from tool evidence. Unsupported decisions are rejected back to the model, and repeated attempts end the request.
+- A route can only be selected if `plan_step_free_journey` returned it; a reroute needs `find_alternative_route` plus a disruption, reported by `get_journey_disruptions`, on a connection the current route requires; a disruption can only be claimed from tool evidence. Unsupported decisions are rejected back to the model, and repeated attempts end the request.
 - At most 8 MCP tool calls per request (a normal journey uses 4, a reroute re-check 4, a fresh journey that must reroute 5), identical repeated calls are refused, and each model and tool step has a timeout.
 - The final sentence shown to the traveller is checked against the tool results (minutes, station names, lines, lift names). If anything is unsupported it is replaced by plain copy assembled from the results.
 - The `/mcp` endpoint is internal: it needs a bearer token the backend generates at start-up, is not covered by CORS and is never called by the browser. The Gemini key stays on the backend.
@@ -54,7 +54,7 @@ The StepFree MCP server (`backend/src/agent/mcpServer.ts`, `@modelcontextprotoco
 | `plan_step_free_journey` | read | `algo.SPpaths` over `RIDE` and `STEP_FREE_TRANSFER`, weighted by `minutes`, between two station street nodes. Returns a `routeId`, canonical station names, duration, stations, lines, changes, and the accessibility connections the route depends on (`requiredConnectionIds`), so the agent does not need a second call for them. |
 | `find_backup_route` | read | **Plan B.** For each lift the primary route uses, runs the same `algo.SPpaths` query in a graph where that lift (and anything already unavailable) is out, rejects any candidate that is the same journey as the primary, and returns the fastest distinct route with its extra minutes. `available: false` if there is none. |
 | `inspect_route_dependencies` | read | Reads the `STEP_FREE_TRANSFER` relationships on the route's path and the lifts each uses (`liftsUsed`) or cannot work without (`requiredLifts`). The planner runs this same query when it returns a route; the tool gives the per-connection detail on request. |
-| `get_accessibility_disruptions` | read | Demo: the controlled Green Park Lift 2 outage once the user triggers it. Live: TfL's lift disruption feed. Each disruption is flagged relevant to the route or not. |
+| `get_journey_disruptions` | read | What is unavailable now, as one list whatever the type (`LIFT`, `STATION`, `LINE`; each with `simulated`, `label` and the connection ids it affects). Demo: the single simulated event the user activated. Live: TfL's real lift disruptions (`simulated: false`). Each disruption is flagged relevant to the current route or not. |
 | `find_alternative_route` | read | Copies the graph with the affected `STEP_FREE_TRANSFER` relationships re-typed `UNAVAILABLE_TRANSFER`, then runs the same shortest-path query. |
 | `record_journey_decision` | write | The one write: creates the `AgentDecision` under the `JourneySession` and links it to stations. |
 
@@ -67,15 +67,15 @@ Demo Mode, Victoria → London Bridge (each line is an executed MCP call: tool, 
 ```text
 1  plan_step_free_journey {origin:"Victoria", destination:"London Bridge"}
                                                      → 35 min via Green Park, Westminster, Waterloo, Southwark; requires 940GZZLUGPK-Lift-2, HUBLBG-Lift-2
-2  get_accessibility_disruptions {mode:"demo", relevantConnectionIds:[…]}  → no active disruption
+2  get_journey_disruptions {mode:"demo", relevantConnectionIds:[…]}  → no active disruption
 3  find_backup_route {primaryRouteId, …}             → Plan B: 39 min via St James's Park, Westminster, … (+4 min)
 4  record_journey_decision {action:"ROUTE_SELECTED"} → recorded (Route Health CLEAR, backup available)
 ```
 
-After **Simulate lift outage** (the app only reports the outage; the agent re-checks the same session, given the stored route's required connections):
+After **Simulate disruption → Lift outage** (the app only reports which event was activated; the agent re-checks the same session, given the stored route's required connections):
 
 ```text
-1  get_accessibility_disruptions {mode:"demo", relevantConnectionIds:[…]}  → Green Park Lift 2 unavailable (relevant)
+1  get_journey_disruptions {mode:"demo", relevantConnectionIds:[…]}  → Green Park Lift 2 unavailable (simulated, relevant)
 2  find_alternative_route {…, unavailableConnectionIds:["940GZZLUGPK-Lift-2"]} → 39 min via St James's Park, Westminster, Waterloo, Southwark
 3  find_backup_route {primaryRouteId: <the new route>, unavailableConnectionIds:[…]} → Plan B recalculated: 52 min via Green Park, King's Cross St Pancras, Moorgate (+13 min)
 4  record_journey_decision {action:"REROUTED", reasonCode:"REQUIRED_LIFT_UNAVAILABLE"} → recorded (Route Health REROUTED)
@@ -98,9 +98,30 @@ Beside the route, the app answers three questions without making anyone read gra
 - **Coding assistant:** this repository was built with Claude Code (Anthropic's Claude models, Opus 5.5 and Sonnet 5.5) directed by the project owner, who reviews and runs the work. Commits made with it carry a `Co-Authored-By` trailer.
 - **Runtime model:** at run time the journey agent calls Google's Gemini (`gemini-3.8-flash`, `@google/genai`) from the backend. It only chooses among the StepFree MCP tools and words the result; it does not compute routes or write queries. These are separate things: the coding assistant is not part of the running product.
 
-### Demo Mode
+### Demo Mode: the universal judge experience
 
-A controlled, repeatable outage. Victoria → London Bridge first goes via Green Park (Victoria line, then Jubilee line). **Simulate lift outage** makes Green Park **Lift 2** (`940GZZLUGPK-Lift-2`) unavailable. FalkorDB then reroutes via the District line to Westminster, passing St James’s Park without stopping, and the Jubilee line onward to London Bridge.
+Demo Mode is the main way to experience StepFree, for a judge anywhere in the world. It needs **no location, no London visit and no real disruption**: it never asks the browser for location, and nothing about it is geofenced. Live Mode (below) is a London-only bonus.
+
+1. **Run Judge Demo** sets Victoria → London Bridge, clears any simulated event and runs the healthy journey through the agent: 35 min via Green Park, Route Health **Clear**, a Plan B (39 min, +4 min), **Why this route?** and **How StepFree decided**. Nothing is disrupted yet.
+2. **Simulate disruption** offers exactly three controlled events, each labelled as a *simulated Demo Mode event, not a real TfL disruption*. One can be active at a time:
+   - **Lift outage: Green Park Lift 2** (`940GZZLUGPK-Lift-2`). 35 → 39 min via the District line and Westminster.
+   - **Station closure: Green Park station.** 35 → 39 min via the District line and Westminster.
+   - **Line disruption: Jubilee line.** 35 → 52 min: Victoria line to King's Cross St Pancras, then the Northern line via Moorgate.
+3. **Reset demo** runs a fresh journey in a new session. No backend restart, reseed or page refresh is needed, and nothing from the previous event is carried over.
+
+The app only tells the backend *which* event was activated. The agent reads the current disruption, checks it against what the current route depends on, and only then decides: reroute (FalkorDB computes the replacement and Plan B is recalculated for it), or keep the route. If you pick another From/To pair and activate an event that does not touch that journey, the agent says so and keeps the route (Route Health stays Clear).
+
+**One generic disruption model.** A lift, a station and a line are all the same thing to the graph, the tools and the agent: a *connection id* that is unavailable (`940GZZLUGPK-Lift-2`, `STATION:GPK`, `LINE:jubilee`). A route depends on connection ids too (its required lifts, the stations where it enters, leaves or changes, the lines it rides alone). A disruption affects a route exactly when the two intersect. FalkorDB then recomputes with those ids excluded:
+
+| Disruption | What the graph loses |
+|---|---|
+| Lift | every `STEP_FREE_TRANSFER` that TfL topology says cannot work without that lift (becomes `UNAVAILABLE_TRANSFER`) |
+| Station (closed) | every `STEP_FREE_TRANSFER` at the station: no street access, no boarding, no alighting, no interchange. Trains keep running *through* a closed station, so rides along a line are untouched. |
+| Line | every `RIDE` that only that line provides (becomes `UNAVAILABLE_RIDE`); a ride another line also serves survives |
+
+Why these scenarios were chosen: they were validated against the 17-station FalkorDB graph for Victoria → London Bridge. **Green Park** is the only station whose closure changes this journey, because it is the only place the route uses a station (the Victoria to Jubilee interchange); every other station on it is passed through, which a closed station allows. The closure therefore produces the same 39-minute route as the lift outage, for a different reason. **Jubilee line** carries most of the journey, and without it FalkorDB finds a genuinely different valid route (52 min, Northern line) rather than the lift route; the Victoria line would also have reproduced the 39-minute route.
+
+Station and line disruptions exist only as Demo Mode simulations. They are not live TfL feeds, and nothing here claims otherwise. Live Mode still uses TfL's real lift disruptions only.
 
 The lift is derived from TfL data, not chosen by hand. In TfL’s topology, Lift 2 is the only lift whose loss breaks every step-free path between Green Park’s Victoria line and Jubilee line platforms. The Victoria line lifts (5 and 6) back each other up. Only that interchange, and street access to the Jubilee line, are disabled. Green Park’s Victoria line access stays available.
 

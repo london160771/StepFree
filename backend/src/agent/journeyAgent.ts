@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { RouteDependency, RouteResult, RoutingGraph } from '../graph/routing.js';
+import { parseConnection } from '../network/connections.js';
 import { stationKey } from '../network/names.js';
 import type { LiftDisruption } from '../tfl/liftDisruptions.js';
 import {
@@ -12,6 +13,7 @@ import {
 import { ModelUnavailableError, type AgentModel, type ModelToolCall, type ModelToolResult } from './model.js';
 import type { AgentState, JourneySessionState } from './state.js';
 import { compactResult, describeStep, type TraceEntry } from './trace.js';
+import type { DemoDisruptionKind } from './demoDisruptions.js';
 import { computeRouteHealth, planBView, whyThisRoute, type PlanBView, type RouteHealth, type WhyThisRoute } from './insights.js';
 import {
   TOOL_NAMES,
@@ -43,8 +45,8 @@ export interface AgentRequest {
   destination?: string;
   mode: 'demo' | 'live';
   sessionId?: string;
-  /** Demo Mode: the user has triggered (true) or cleared (false) the controlled Green Park outage. */
-  demoOutage?: boolean;
+  /** Demo Mode: the simulated disruption the user activated (or null to clear it). Only reported, never acted on here. */
+  demoDisruption?: DemoDisruptionKind | null;
 }
 
 /** The same shape /api/route returns, so the map and journey panel need no changes. */
@@ -70,7 +72,18 @@ export interface AgentResponse {
   /** The plain-language reasons for this route, built from the same evidence. */
   whyThisRoute: WhyThisRoute | null;
   dependencies: { station: string; kind: string; lifts: string[]; requiredConnectionIds: string[] }[];
-  disruptions: { connectionId: string; station: string; name: string; message: string }[];
+  disruptions: {
+    kind: 'LIFT' | 'STATION' | 'LINE';
+    id: string;
+    label: string;
+    closed: boolean;
+    /** True for Demo Mode's controlled events; false for real TfL data. */
+    simulated: boolean;
+    stationId: string | null;
+    station: string | null;
+    message: string;
+    affectedConnectionIds: string[];
+  }[];
   trace: TraceEntry[];
   agent: { model: string; transport: 'mcp-streamable-http'; toolCalls: number; maxToolCalls: number };
 }
@@ -110,11 +123,11 @@ const SYSTEM_PROMPT = [
   'You are the StepFree journey agent. StepFree finds step-free London Underground routes for wheelchair users, older people, injured people and parents with pushchairs.',
   'You act only by calling the StepFree tools. FalkorDB computes every route: never invent stations, routes, times, lines or lift states, and never describe anything a tool did not return.',
   'Procedure for a new journey: (1) plan_step_free_journey with the two stations as given. It resolves them itself and returns the route together with the connections it depends on (requiredConnectionIds). If it returns UNKNOWN_STATION, stop and tell the traveller that station is not in the supported network; call no other tool.',
-  '(2) get_accessibility_disruptions, passing the route requiredConnectionIds as relevantConnectionIds.',
+  '(2) get_journey_disruptions (lifts, stations or lines that are currently unavailable), passing the route requiredConnectionIds as relevantConnectionIds.',
   '(3) If a disruption is on a required connection of the route, call find_alternative_route with those connection ids as unavailableConnectionIds; that new route is the one to keep.',
   '(4) For the route you are going to keep, call find_backup_route (Plan B) with its routeId as primaryRouteId, so the traveller knows whether another step-free route exists before anything breaks. A backup is only a preview: never present it as the chosen route.',
   '(5) Record the decision: REROUTED (with that alternative routeId and the affected connection ids) after a reroute, otherwise ROUTE_SELECTED with the planned routeId. If planning returned NO_ROUTE, record NO_ROUTE and call find_backup_route for nothing.',
-  'When re-checking a journey that already has a route, its requiredConnectionIds are given to you: call get_accessibility_disruptions with them. Then, if it is still usable, call find_backup_route for it and record ROUTE_RETAINED; if a required connection is now out, call find_alternative_route, then find_backup_route for the new route, then record REROUTED; if no disruption remains and a faster route may exist, plan again, call find_backup_route for it and record ROUTE_SELECTED.',
+  'When re-checking a journey that already has a route, its requiredConnectionIds are given to you: call get_journey_disruptions with them. Then, if it is still usable, call find_backup_route for it and record ROUTE_RETAINED; if a required connection is now out, call find_alternative_route, then find_backup_route for the new route, then record REROUTED; if no disruption remains and a faster route may exist, plan again, call find_backup_route for it and record ROUTE_SELECTED.',
   'Use resolve_station or inspect_route_dependencies only if you are genuinely unsure; they are rarely needed.',
   'Always finish by calling record_journey_decision once, then reply in one or two short, plain sentences for the traveller, quoting the duration in minutes exactly as the tool returned it. Do not mention graphs, tools or databases.',
 ].join('\n');
@@ -133,8 +146,8 @@ export class JourneyAgent {
     const recheck = Boolean(known && known.originId && known.destinationId && known.mode === request.mode);
     const session: JourneySessionState = recheck
       ? known!
-      : { id: randomUUID(), mode: request.mode, demoOutage: false, originId: null, destinationId: null, currentRouteId: null };
-    if (request.demoOutage !== undefined && request.mode === 'demo') session.demoOutage = request.demoOutage;
+      : { id: randomUUID(), mode: request.mode, demoDisruption: null, originId: null, destinationId: null, currentRouteId: null };
+    if (request.demoDisruption !== undefined && request.mode === 'demo') session.demoDisruption = request.demoDisruption;
     state.saveSession(session);
     const startRouteId = recheck ? session.currentRouteId : null;
     const names = new Map(routing.network.stations.map((s) => [s.id, s.name]));
@@ -288,10 +301,20 @@ export class JourneyAgent {
     const names = new Map(routing.network.stations.map((s) => [s.id, s.name]));
     const supported = routing.network.stations.map((s) => s.name);
     const active = ev.disruption?.disruptions ?? [];
-    const lifts: LiftDisruption[] = active.map((d) => ({ liftUniqueId: d.connectionId, stationId: d.stationId, friendlyName: d.name, message: d.message }));
-    const unavailable = { lifts, transferIds: routing.unavailableTransfers(lifts.map((l) => l.liftUniqueId)) };
+    const lifts: LiftDisruption[] = active.flatMap((d) => (d.kind === 'LIFT' && d.stationId ? [{ liftUniqueId: d.id, stationId: d.stationId, friendlyName: d.name, message: d.message }] : []));
+    const unavailable = { lifts, transferIds: routing.unavailableTransfers(active.map((d) => d.id)) };
     const fetchedAt = ev.disruption?.fetchedAt ?? null;
-    const disruptions = active.map(({ connectionId, station, name, message }) => ({ connectionId, station, name, message }));
+    const disruptions = active.map(({ kind, id, label, closed, simulated, stationId, station, message, affectedConnectionIds }) => ({
+      kind,
+      id,
+      label,
+      closed,
+      simulated,
+      stationId,
+      station,
+      message,
+      affectedConnectionIds,
+    }));
 
     if (action === 'NO_ROUTE') {
       const last = ev.noRoutes.at(-1)!;
@@ -300,7 +323,7 @@ export class JourneyAgent {
       session.originId = origin?.id ?? session.originId;
       session.destinationId = destination?.id ?? session.destinationId;
       session.currentRouteId = null;
-      const facts: GroundingFacts = { action, backupMinutes: null, durationMinutes: null, previousMinutes: null, routeStations: [], viaStation: null, lines: [], disruptions: [], noRouteReason: last.reason };
+      const facts: GroundingFacts = { action, backupMinutes: null, durationMinutes: null, previousMinutes: null, routeStations: [], viaStation: null, lines: [], disruptions: [], unrelated: [], noRouteReason: last.reason };
       const view: JourneyView = { mode: session.mode, from: origin?.id ?? null, to: destination?.id ?? null, route: null, noRouteReason: last.reason, unavailable, fetchedAt };
       return finish('NO_ROUTE', groundedMessage(modelText, facts, supported), view, { disruptions, routeHealth: { status: 'NO_ROUTE', affectedConnectionIds: [] } });
     }
@@ -313,13 +336,16 @@ export class JourneyAgent {
     const previous = startRouteId ? state.routes.get(startRouteId) : undefined;
     const affected = new Set<string>(decision.args.affectedConnectionIds ?? []);
     const linesOf = (route: RouteResult) => [...new Set(route.legs.flatMap((l) => (l.type === 'ride' ? l.lines : [])))].map(lineDisplay);
-    const liftName = (connectionId: string) => {
+    const describeConnection = (connectionId: string): { kind: 'LIFT' | 'STATION' | 'LINE'; label: string } => {
+      const connection = parseConnection(routing.network, connectionId);
+      if (connection?.kind === 'STATION') return { kind: 'STATION', label: `${names.get(connection.stationId) ?? connection.stationId} station` };
+      if (connection?.kind === 'LINE') return { kind: 'LINE', label: `${lineDisplay(connection.line)} line` };
       const lift = routing.network.lifts.find((l) => l.liftUniqueId === connectionId);
-      return { station: lift ? (names.get(lift.stationId) ?? lift.stationId) : connectionId, name: lift?.friendlyName ?? connectionId };
+      return { kind: 'LIFT', label: lift ? `${names.get(lift.stationId) ?? lift.stationId} ${lift.friendlyName}` : connectionId };
     };
     const backup = ev.backups.get(routeId);
     const backupStored = backup?.available ? state.routes.get(backup.route.routeId) : undefined;
-    const planB = planBView(backup, backupStored?.route, (id) => names.get(id)!, liftName);
+    const planB = planBView(backup, backupStored?.route, (id) => names.get(id)!, describeConnection);
     const dependencyView = ev.dependencies.get(routeId);
     const health = computeRouteHealth({
       action,
@@ -330,9 +356,10 @@ export class JourneyAgent {
     const why = whyThisRoute({
       health,
       route: stored.route,
-      requiredCount: dependencyView?.requiredConnectionIds.length ?? 0,
+      requiredLiftCount: (dependencyView?.requiredConnectionIds ?? []).filter((id) => !id.startsWith('STATION:') && !id.startsWith('LINE:')).length,
       planB,
-      avoidedNames: active.filter((d) => affected.has(d.connectionId)).map((d) => `${d.station} ${d.name}`),
+      affected: active.filter((d) => affected.has(d.id)),
+      unrelated: active.filter((d) => !affected.has(d.id) && health.status !== 'AFFECTED'),
     });
     const facts: GroundingFacts = {
       action,
@@ -342,7 +369,8 @@ export class JourneyAgent {
       routeStations: [...stored.route.stations.map((id) => names.get(id)!), stored.origin.name, stored.destination.name],
       viaStation: action === 'REROUTED' ? (ev.routes.get(routeId)?.route.changes[0]?.station ?? null) : null,
       lines: linesOf(stored.route),
-      disruptions: active.filter((d) => affected.has(d.connectionId)).map((d) => ({ station: d.station, name: d.name, connectionId: d.connectionId })),
+      disruptions: active.filter((d) => affected.has(d.id)).map((d) => ({ kind: d.kind, label: d.label, closed: d.closed, station: d.station, connectionId: d.id })),
+      unrelated: active.filter((d) => !affected.has(d.id)).map((d) => ({ label: d.label, closed: d.closed })),
       noRouteReason: null,
     };
     const dependencies = (ev.dependencies.get(routeId)?.dependencies ?? []).map((d) => ({ station: d.station, kind: d.kind, lifts: d.lifts, requiredConnectionIds: d.requiredConnectionIds }));
@@ -359,7 +387,7 @@ const lineDisplay = (line: string) => line.split('-')[0].replace(/^./, (c) => c.
 /** The host, not the model, decides the session and mode the tools run in. */
 function normaliseArgs(call: ModelToolCall, session: JourneySessionState, ev: Evidence): Record<string, unknown> {
   const args = { ...call.args };
-  if (call.name === 'get_accessibility_disruptions') {
+  if (call.name === 'get_journey_disruptions') {
     args.mode = session.mode;
     args.sessionId = session.id;
   }
@@ -367,6 +395,11 @@ function normaliseArgs(call: ModelToolCall, session: JourneySessionState, ev: Ev
   if (call.name === 'find_backup_route' && ev.disruption) args.unavailableConnectionIds = ev.disruption.disruptions.map((d) => d.connectionId);
   if (call.name === 'record_journey_decision') {
     args.sessionId = session.id;
+    // How a reroute is classified comes from what was disrupted, not from the model's wording.
+    if (args.action === 'REROUTED') {
+      const first = String(((args.affectedConnectionIds as string[] | undefined) ?? [])[0] ?? '');
+      args.reasonCode = first.startsWith('STATION:') ? 'STATION_CLOSURE' : first.startsWith('LINE:') ? 'LINE_DISRUPTION' : 'LIFT_DISRUPTION';
+    }
     // Route health is computed from evidence here, never taken from the model.
     const routeId = (args.routeSummary as { routeId?: string } | undefined)?.routeId;
     args.routeHealth = computeRouteHealth({
@@ -438,7 +471,7 @@ function absorb(ev: Evidence, tool: string, args: Record<string, any>, result: a
     case 'inspect_route_dependencies':
       ev.dependencies.set(result.routeId, result as DependencyToolResult);
       break;
-    case 'get_accessibility_disruptions':
+    case 'get_journey_disruptions':
       ev.disruption = result as DisruptionToolResult;
       break;
     case 'find_backup_route':
@@ -453,7 +486,7 @@ function absorb(ev: Evidence, tool: string, args: Record<string, any>, result: a
 /**
  * Safety invariants. Returns why a decision is not supported by the evidence, or null if it is.
  * - no route decision without a route a graph tool returned for the user's stations
- * - no disruption claim without get_accessibility_disruptions
+ * - no disruption claim without get_journey_disruptions
  * - no reroute without find_alternative_route and a disruption on a required connection of the current route
  */
 export function guardDecision(
@@ -490,7 +523,7 @@ export function guardDecision(
     if (expected.origin === null || expected.destination === null) return 'Resolve both stations with resolve_station first.';
     if (originId !== expected.origin || destinationId !== expected.destination) return 'That route is not for the traveller’s stations.';
   }
-  if (!ev.disruption) return 'Check get_accessibility_disruptions before recording this decision.';
+  if (!ev.disruption) return 'Check get_journey_disruptions before recording this decision.';
   if (!ev.backups.has(routeId!)) return 'Call find_backup_route for this route before recording it, so the traveller knows whether a Plan B exists.';
   if (args.action === 'ROUTE_SELECTED' || args.action === 'ROUTE_RETAINED') {
     if (!ev.dependencies.has(routeId!)) return 'This route’s dependencies are not known. Plan it with plan_step_free_journey first.';
@@ -499,7 +532,7 @@ export function guardDecision(
   }
   if (args.action === 'REROUTED') {
     const affected: string[] = args.affectedConnectionIds ?? [];
-    if (affected.length === 0 || !affected.every((id) => active.has(id))) return 'REROUTED needs affectedConnectionIds that get_accessibility_disruptions reported.';
+    if (affected.length === 0 || !affected.every((id) => active.has(id))) return 'REROUTED needs affectedConnectionIds that get_journey_disruptions reported.';
     const previousId = startRouteId ?? ev.firstPlanRouteId;
     if (!previousId || !ev.dependencies.has(previousId)) return 'The current route’s dependencies are not known.';
     if (!conflicts(previousId).some((id) => affected.includes(id))) return 'The current route does not depend on the affected connections, so it does not need rerouting.';

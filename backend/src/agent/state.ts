@@ -1,4 +1,5 @@
 import type { RouteDependency, RouteResult } from '../graph/routing.js';
+import type { DemoDisruptionKind } from './demoDisruptions.js';
 
 /** A route a graph tool returned. Later tools (inspect, record) refer to it by id, so nothing can be recorded that FalkorDB did not produce. */
 export interface StoredRoute {
@@ -18,8 +19,8 @@ export interface StoredRoute {
 export interface JourneySessionState {
   id: string;
   mode: 'demo' | 'live';
-  /** Demo Mode only: the controlled Green Park outage has been triggered by the user. */
-  demoOutage: boolean;
+  /** Demo Mode only: which controlled, simulated disruption the user has activated (one at a time), if any. */
+  demoDisruption: DemoDisruptionKind | null;
   originId: string | null;
   destinationId: string | null;
   currentRouteId: string | null;
