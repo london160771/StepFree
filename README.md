@@ -37,7 +37,7 @@ Safety rules the host enforces, independent of the model:
 
 - The model never writes Cypher and never computes a route. There is no query tool. Every graph operation is fixed Cypher in `backend/src/graph/routing.ts` with parameters; tool arguments are validated with Zod (types, enums, lengths, array limits, id patterns), then checked against the graph (unknown stations and unknown lift ids are refused).
 - A route can only be selected if `plan_step_free_journey` returned it; a reroute needs `find_alternative_route` plus a disruption, reported by `get_accessibility_disruptions`, on a connection the current route requires; a disruption can only be claimed from tool evidence. Unsupported decisions are rejected back to the model, and repeated attempts end the request.
-- At most 8 MCP tool calls per request (a normal journey uses 3, a reroute re-check 3, a fresh journey that must reroute 4), identical repeated calls are refused, and each model and tool step has a timeout.
+- At most 8 MCP tool calls per request (a normal journey uses 4, a reroute re-check 4, a fresh journey that must reroute 5), identical repeated calls are refused, and each model and tool step has a timeout.
 - The final sentence shown to the traveller is checked against the tool results (minutes, station names, lines, lift names). If anything is unsupported it is replaced by plain copy assembled from the results.
 - The `/mcp` endpoint is internal: it needs a bearer token the backend generates at start-up, is not covered by CORS and is never called by the browser. The Gemini key stays on the backend.
 - If the model, MCP or TfL feed is unavailable, StepFree says so (“Journey agent is temporarily unavailable.”). It never quietly falls back to a non-agent route and presents it as the agent's decision.
@@ -52,6 +52,7 @@ The StepFree MCP server (`backend/src/agent/mcpServer.ts`, `@modelcontextprotoco
 |---|---|---|
 | `resolve_station` | read | Matches a name or id to a supported station in FalkorDB (`MATCH (s:Station) WHERE s.key = $key OR $key IN s.aliases OR s.id = $id`). Unknown names return `found: false`. `plan_step_free_journey` and `find_alternative_route` run the same lookup internally, so the agent only calls this when a name is ambiguous. |
 | `plan_step_free_journey` | read | `algo.SPpaths` over `RIDE` and `STEP_FREE_TRANSFER`, weighted by `minutes`, between two station street nodes. Returns a `routeId`, canonical station names, duration, stations, lines, changes, and the accessibility connections the route depends on (`requiredConnectionIds`), so the agent does not need a second call for them. |
+| `find_backup_route` | read | **Plan B.** For each lift the primary route uses, runs the same `algo.SPpaths` query in a graph where that lift (and anything already unavailable) is out, rejects any candidate that is the same journey as the primary, and returns the fastest distinct route with its extra minutes. `available: false` if there is none. |
 | `inspect_route_dependencies` | read | Reads the `STEP_FREE_TRANSFER` relationships on the route's path and the lifts each uses (`liftsUsed`) or cannot work without (`requiredLifts`). The planner runs this same query when it returns a route; the tool gives the per-connection detail on request. |
 | `get_accessibility_disruptions` | read | Demo: the controlled Green Park Lift 2 outage once the user triggers it. Live: TfL's lift disruption feed. Each disruption is flagged relevant to the route or not. |
 | `find_alternative_route` | read | Copies the graph with the affected `STEP_FREE_TRANSFER` relationships re-typed `UNAVAILABLE_TRANSFER`, then runs the same shortest-path query. |
@@ -67,7 +68,8 @@ Demo Mode, Victoria → London Bridge (each line is an executed MCP call: tool, 
 1  plan_step_free_journey {origin:"Victoria", destination:"London Bridge"}
                                                      → 35 min via Green Park, Westminster, Waterloo, Southwark; requires 940GZZLUGPK-Lift-2, HUBLBG-Lift-2
 2  get_accessibility_disruptions {mode:"demo", relevantConnectionIds:[…]}  → no active disruption
-3  record_journey_decision {action:"ROUTE_SELECTED"} → recorded
+3  find_backup_route {primaryRouteId, …}             → Plan B: 39 min via St James's Park, Westminster, … (+4 min)
+4  record_journey_decision {action:"ROUTE_SELECTED"} → recorded (Route Health CLEAR, backup available)
 ```
 
 After **Simulate lift outage** (the app only reports the outage; the agent re-checks the same session, given the stored route's required connections):
@@ -75,10 +77,21 @@ After **Simulate lift outage** (the app only reports the outage; the agent re-ch
 ```text
 1  get_accessibility_disruptions {mode:"demo", relevantConnectionIds:[…]}  → Green Park Lift 2 unavailable (relevant)
 2  find_alternative_route {…, unavailableConnectionIds:["940GZZLUGPK-Lift-2"]} → 39 min via St James's Park, Westminster, Waterloo, Southwark
-3  record_journey_decision {action:"REROUTED", reasonCode:"REQUIRED_LIFT_UNAVAILABLE"} → recorded
+3  find_backup_route {primaryRouteId: <the new route>, unavailableConnectionIds:[…]} → Plan B recalculated: 52 min via Green Park, King's Cross St Pancras, Moorgate (+13 min)
+4  record_journey_decision {action:"REROUTED", reasonCode:"REQUIRED_LIFT_UNAVAILABLE"} → recorded (Route Health REROUTED)
 ```
 
 The app shows this under **How StepFree decided** (collapsed by default), in plain words generated from the structured results.
+
+## Plan B, Route Health and Why this route?
+
+Beside the route, the app answers three questions without making anyone read graph terms:
+
+- **Route Health** (Clear, Affected, Rerouted, No step-free route). Computed in the backend from tool evidence only: Clear when a route exists and no current disruption touches a connection it requires; Affected when one does; Rerouted when the agent replaced an affected route with a valid one; No step-free route when FalkorDB finds none. No scores or percentages, and no model judgement.
+- **Plan B** (“Backup available · 39 min +4 min”). A backup route FalkorDB found *before* anything broke, shown as a collapsed preview with its stations, lines and duration. It is not selected, and never replaces the current route. The agent chooses to call `find_backup_route`; the tool tries each lift the primary route uses (bounded to 8, and only lifts whose loss removes a connection are queried), rejects candidates that are the same journey as the primary, and keeps the fastest distinct one. If there is none it says so.
+- **Why this route?** Short human reasons (shortest usable step-free route, connections available, lines, changes, lifts it cannot do without, whether a Plan B exists), assembled deterministically from the same tool results. It costs no extra model call and never shows reasoning or Cypher. It is separate from **How StepFree decided**, which is the technical tool trace.
+
+**Plan B is not a reroute.** Plan B is a preview computed in advance; a reroute is the route the agent actually selects after a disruption makes the current one unusable, and after a reroute Plan B is recalculated for the new route. Route Health, whether a backup exists and its route id are stored on the `AgentDecision` node (`routeHealth`, `backupAvailable`, `backupRouteId`).
 
 ## AI use disclosure
 

@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import type { ReactNode } from 'react';
-import type { LiftDisruption, Route } from '../api';
+import type { LiftDisruption, Route, RouteHealth } from '../api';
 import type { useStepFree } from '../useStepFree';
 import { DecisionTrace } from './DecisionTrace';
+import { PlanBSection, RouteHealthStatus, WhyThisRouteSection } from './JourneyInsights';
 import { describeLeg, SAFETY_NOTE } from './describe';
 import { CheckGlyph, InfoGlyph, LiftGlyph, LocationGlyph } from './icons';
 
@@ -171,7 +172,7 @@ function Planner({ store }: { store: Store }) {
 }
 
 function PhaseContent({ store, name }: { store: Store; name: (id: string) => string }) {
-  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateOutage, resetDemo, noRouteReason, agentMessage, trace } = store;
+  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateOutage, resetDemo, noRouteReason, agentMessage, trace, routeHealth, planB, why } = store;
   const outageLift = network!.demoOutage;
 
   if (phase === 'outage' || phase === 'recalculating') {
@@ -199,6 +200,11 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
             </button>
           </div>
         )}
+        {routeHealth && (
+          <div className="mt-3">
+            <RouteHealthStatus health={routeHealth} />
+          </div>
+        )}
         {trace.length > 0 && (
           <div className="mt-4">
             <DecisionTrace trace={trace} />
@@ -217,7 +223,9 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
         )}
         {mode === 'live' && unavailableLifts.length > 0 && <LiveDisruptions lifts={unavailableLifts} name={name} />}
         {phase === 'route' && agentMessage && <p className="text-base font-medium text-slate-800">{agentMessage}</p>}
-        <RouteResult route={route} name={name} previousMinutes={phase === 'rerouted' ? fadingRoute?.totalMinutes : undefined} />
+        <RouteResult route={route} name={name} previousMinutes={phase === 'rerouted' ? fadingRoute?.totalMinutes : undefined} health={routeHealth} />
+        {planB && <PlanBSection planB={planB} name={name} />}
+        {why && <WhyThisRouteSection why={why} />}
         <DecisionTrace trace={trace} />
         {mode === 'demo' && phase === 'route' && (
           <button type="button" className="btn-outage" onClick={simulateOutage}>
@@ -236,7 +244,7 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
   return null;
 }
 
-function RouteResult({ route, name, previousMinutes }: { route: Route; name: (id: string) => string; previousMinutes?: number }) {
+function RouteResult({ route, name, previousMinutes, health }: { route: Route; name: (id: string) => string; previousMinutes?: number; health?: RouteHealth | null }) {
   const openSteps = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
   const origin = name(route.stations[0]);
   const destination = name(route.stations.at(-1)!);
@@ -251,6 +259,11 @@ function RouteResult({ route, name, previousMinutes }: { route: Route; name: (id
             <CheckGlyph className="h-4 w-4" />
             Step-free route
           </span>
+          {health && (
+            <div className="mt-2">
+              <RouteHealthStatus health={health} />
+            </div>
+          )}
         </div>
         <div className="text-right">
           <p className="text-3xl font-bold tabular-nums text-slate-900">

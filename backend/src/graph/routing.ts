@@ -75,6 +75,10 @@ export interface DecisionRecord {
   routeDuration: number | null;
   affectedConnectionIds: string[];
   affectedStationIds: string[];
+  /** Factual state at decision time: CLEAR, AFFECTED, REROUTED or NO_ROUTE. */
+  routeHealth?: string | null;
+  backupAvailable?: boolean | null;
+  backupRouteId?: string | null;
 }
 
 export interface GraphEdge {
@@ -277,9 +281,11 @@ export class RoutingGraph {
        MERGE (s)-[:TO]->(d)
        CREATE (s)-[:HAS_DECISION]->(x:AgentDecision {
          id: $decisionId, action: $action, reasonCode: $reasonCode, createdAt: $now,
-         routeId: $routeId, routeDuration: $routeDuration, affectedConnectionIds: $affectedConnectionIds
+         routeId: $routeId, routeDuration: $routeDuration, affectedConnectionIds: $affectedConnectionIds,
+         routeHealth: $routeHealth, backupAvailable: $backupAvailable, backupRouteId: $backupRouteId
        })`,
-      { params: { ...record, decisionId, now } },
+      // Always set (never null) so every AgentDecision has the same properties.
+      { params: { ...record, routeHealth: record.routeHealth ?? 'UNKNOWN', backupAvailable: record.backupAvailable ?? false, backupRouteId: record.backupRouteId ?? '', decisionId, now } },
     );
     if (record.affectedStationIds.length > 0) {
       await graph.query(
@@ -293,22 +299,34 @@ export class RoutingGraph {
   }
 
   /** The decisions recorded for a journey session, oldest first. */
-  async decisions(sessionId: string): Promise<{ id: string; action: DecisionAction; reasonCode: string; routeDuration: number | null; affectedStationIds: string[] }[]> {
+  async decisions(
+    sessionId: string,
+  ): Promise<{ id: string; action: DecisionAction; reasonCode: string; routeDuration: number | null; affectedStationIds: string[]; routeHealth: string | null; backupAvailable: boolean | null }[]> {
     const reply = await this.db.selectGraph(this.prefix).roQuery<{
       id: string;
       action: DecisionAction;
       reasonCode: string;
       routeDuration: number | null;
       affectedStationIds: string[];
+      routeHealth: string | null;
+      backupAvailable: boolean | null;
       at: string;
     }>(
       `MATCH (:JourneySession {id: $sessionId})-[:HAS_DECISION]->(x:AgentDecision)
        OPTIONAL MATCH (x)-[:AFFECTED_BY]->(st:Station)
-       RETURN x.id AS id, x.action AS action, x.reasonCode AS reasonCode, x.routeDuration AS routeDuration, collect(st.id) AS affectedStationIds, x.createdAt AS at
+       RETURN x.id AS id, x.action AS action, x.reasonCode AS reasonCode, x.routeDuration AS routeDuration, collect(st.id) AS affectedStationIds, x.routeHealth AS routeHealth, x.backupAvailable AS backupAvailable, x.createdAt AS at
        ORDER BY at`,
       { params: { sessionId } },
     );
-    return (reply.data ?? []).map(({ id, action, reasonCode, routeDuration, affectedStationIds }) => ({ id, action, reasonCode, routeDuration, affectedStationIds }));
+    return (reply.data ?? []).map(({ id, action, reasonCode, routeDuration, affectedStationIds, routeHealth, backupAvailable }) => ({
+      id,
+      action,
+      reasonCode,
+      routeDuration,
+      affectedStationIds,
+      routeHealth: routeHealth && routeHealth !== 'UNKNOWN' ? routeHealth : null,
+      backupAvailable: routeHealth && routeHealth !== 'UNKNOWN' ? (backupAvailable ?? null) : null,
+    }));
   }
 
   /** Every node relationship in the given graph, read from FalkorDB for the map. */

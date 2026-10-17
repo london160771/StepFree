@@ -6,6 +6,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAgentRuntime, type AgentRuntime } from '../src/agent/index.js';
 import { claimsAreSupported, deterministicMessage } from '../src/agent/grounding.js';
+import { computeRouteHealth } from '../src/agent/insights.js';
 import { MAX_TOOL_CALLS } from '../src/agent/journeyAgent.js';
 import { TOOL_NAMES } from '../src/agent/toolbox.js';
 import { createApp } from '../src/app.js';
@@ -141,7 +142,7 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
     const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ROUTE_SELECTED');
-    expect(tools(res)).toEqual(['plan_step_free_journey', 'get_accessibility_disruptions', 'record_journey_decision']);
+    expect(tools(res)).toEqual(['plan_step_free_journey', 'get_accessibility_disruptions', 'find_backup_route', 'record_journey_decision']);
     expect(res.body.route.route.totalMinutes).toBe(35);
     expect(res.body.route.route.stations).toEqual(['VIC', 'GPK', 'WSM', 'WLO', 'SWK', 'LNB']);
     expect(res.body.message).toBe('Your step-free route is ready. It takes about 35 minutes.');
@@ -162,14 +163,14 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
     expect(res.status).toBe(200);
     expect(res.body.sessionId).toBe(started.body.sessionId);
     expect(res.body.status).toBe('REROUTED');
-    expect(tools(res)).toEqual(['get_accessibility_disruptions', 'find_alternative_route', 'record_journey_decision']);
+    expect(tools(res)).toEqual(['get_accessibility_disruptions', 'find_alternative_route', 'find_backup_route', 'record_journey_decision']);
     expect(res.body.route.route.totalMinutes).toBe(39);
     expect(res.body.route.route.stations).toEqual(['VIC', 'SJP', 'WSM', 'WLO', 'SWK', 'LNB']);
     expect(res.body.route.unavailable.lifts.map((l: any) => l.liftUniqueId)).toEqual([LIFT_2]);
     expect(res.body.route.unavailable.transferIds.length).toBeGreaterThan(0);
     expect(res.body.disruptions[0]).toMatchObject({ connectionId: LIFT_2, station: 'Green Park' });
     expect(res.body.message).toBe(
-      "Green Park Lift 2 is unavailable and your current journey depended on it. I've found another step-free route through Westminster. It takes about 39 minutes.",
+      "Green Park Lift 2 is unavailable and your previous journey depended on it. I've found another step-free route through Westminster. It takes about 39 minutes.",
     );
     const disruptionStep = res.body.trace.find((t: any) => t.tool === 'get_accessibility_disruptions');
     expect(disruptionStep.summary).toBe('Detected Green Park Lift 2 unavailable');
@@ -346,6 +347,7 @@ describe('Grounded wording', () => {
     lines: ['District', 'Circle', 'Jubilee'],
     disruptions: [{ station: 'Green Park', name: 'Lift 2', connectionId: LIFT_2 }],
     noRouteReason: null,
+    backupMinutes: null,
   };
   const supported = network.stations.map((s) => s.name);
 
@@ -382,11 +384,11 @@ describe('Grounded wording', () => {
 });
 
 describe('Efficiency: the common flows use few tool calls', () => {
-  it('a normal journey is 3 MCP calls: plan, disruptions, record', async () => {
+  it('a normal journey is 4 MCP calls: plan, disruptions, Plan B, record', async () => {
     const { app } = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
     const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
-    expect(res.body.trace).toHaveLength(3);
-    expect(res.body.agent.toolCalls).toBe(3);
+    expect(res.body.trace).toHaveLength(4);
+    expect(res.body.agent.toolCalls).toBe(4);
     expect(tools(res)).not.toContain('resolve_station');
     expect(tools(res)).not.toContain('inspect_route_dependencies');
     // The planner's dependency data is what the disruption check is scoped to, and what the response reports.
@@ -396,19 +398,19 @@ describe('Efficiency: the common flows use few tool calls', () => {
     expect(res.body.dependencies.length).toBe(3);
   });
 
-  it('a reroute re-check is 3 MCP calls and reuses the stored dependencies', async () => {
+  it('a reroute re-check is 4 MCP calls and reuses the stored dependencies', async () => {
     const first = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
     const started = await journey(first.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
     const routeId = first.runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
     const model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
     first.runtime.agent['deps'].model = model;
     const res = await journey(first.app, { sessionId: started.body.sessionId, mode: 'demo', demoOutage: true });
-    expect(tools(res)).toEqual(['get_accessibility_disruptions', 'find_alternative_route', 'record_journey_decision']);
+    expect(tools(res)).toEqual(['get_accessibility_disruptions', 'find_alternative_route', 'find_backup_route', 'record_journey_decision']);
     expect(res.body.status).toBe('REROUTED');
     // The goal handed to the model carries the stored dependencies, so nothing asks the graph for them again.
     expect(model.goals[0]).toContain(LIFT_2);
     expect(res.body.trace.every((t: any) => t.ok)).toBe(true);
-    expect(res.body.trace.map((t: any) => t.step)).toEqual([1, 2, 3]);
+    expect(res.body.trace.map((t: any) => t.step)).toEqual([1, 2, 3, 4]);
   });
 
   it('a fresh journey that must reroute (live disruption on a required lift) is 4 calls and is driven by the graph, not by the lift', async () => {
@@ -422,9 +424,12 @@ describe('Efficiency: the common flows use few tool calls', () => {
     try {
       const { app } = await boot(policyModel({ origin: 'Bond Street', destination: 'Canary Wharf' }));
       const res = await journey(app, { origin: 'Bond Street', destination: 'Canary Wharf', mode: 'live' });
-      expect(tools(res)).toEqual(['plan_step_free_journey', 'get_accessibility_disruptions', 'find_alternative_route', 'record_journey_decision']);
-      expect(res.body.trace[2].args.unavailableConnectionIds).toEqual([required]);
       expect(['REROUTED', 'NO_ROUTE']).toContain(res.body.status);
+      // Plan, disruptions, alternative, then (if the graph found another route) its Plan B, then the decision.
+      const head = ['plan_step_free_journey', 'get_accessibility_disruptions', 'find_alternative_route'];
+      expect(tools(res)).toEqual(res.body.status === 'REROUTED' ? [...head, 'find_backup_route', 'record_journey_decision'] : [...head, 'record_journey_decision']);
+      expect(res.body.trace[2].args.unavailableConnectionIds).toEqual([required]);
+      if (res.body.status === 'REROUTED') expect(res.body.trace[3].args.unavailableConnectionIds).toEqual([required]);
       if (res.body.status === 'REROUTED') expect(res.body.route.route.stations).not.toEqual(planned.route.stationIds);
     } finally {
       liveDisruptions = async () => ({ fetchedAt: '2026-10-17T10:00:00Z', disruptions: [] });
@@ -452,5 +457,163 @@ describe('Efficiency: the common flows use few tool calls', () => {
       const code = readFileSync(new URL(file, dir), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       expect(code, file).not.toMatch(/westminster|green park|\bGPK\b|\bWSM\b|\bSJP\b|Lift-2/i);
     }
+  });
+});
+
+describe('Plan B, Route Health and Why this route', () => {
+  const connect = async () => {
+    const { runtime, app } = await boot(null);
+    const client = new Client({ name: 'test', version: '1' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), { requestInit: { headers: { authorization: `Bearer ${runtime.mcpToken}` } } }));
+    const call = async (name: string, args: Record<string, unknown>) => (await client.callTool({ name, arguments: args })) as any;
+    return { runtime, app, client, call };
+  };
+
+  it('find_backup_route returns a genuinely different route computed by FalkorDB, with the right extra minutes', async () => {
+    const { client, call } = await connect();
+    const planned = (await call('plan_step_free_journey', { origin: 'VIC', destination: 'LNB' })).structuredContent;
+    const backup = (await call('find_backup_route', { origin: 'VIC', destination: 'LNB', primaryRouteId: planned.route.routeId })).structuredContent;
+    expect(backup).toMatchObject({ status: 'BACKUP_FOUND', available: true, primaryRouteId: planned.route.routeId, durationMinutes: 39, extraMinutes: 4 });
+    expect(backup.route.routeId).not.toBe(planned.route.routeId);
+    expect(backup.route.stations).toContain('Westminster');
+    expect(backup.route.stations).not.toContain('Green Park');
+    expect(backup.avoidedConnectionIds).toEqual([LIFT_2]);
+    expect(backup.routeSignature).not.toBe('');
+    // It is the same answer FalkorDB gives when that lift really is out, so the backup is a real graph route, not a canned one.
+    const alt = (await call('find_alternative_route', { origin: 'VIC', destination: 'LNB', unavailableConnectionIds: [LIFT_2] })).structuredContent;
+    expect(alt.route.durationMinutes).toBe(backup.durationMinutes);
+    expect(alt.route.stations).toEqual(backup.route.stations);
+    // Bounded work: only lifts whose loss removes a connection are tried, never every lift in the network.
+    expect(backup.candidatesChecked).toBeLessThanOrEqual(8);
+    await client.close();
+  });
+
+  it('never returns the primary route as Plan B, and Plan B avoids what is already unavailable', async () => {
+    const { client, call } = await connect();
+    // The 39-minute route found with Lift 2 out becomes the primary; its backup must still avoid Lift 2.
+    const alt = (await call('find_alternative_route', { origin: 'VIC', destination: 'LNB', unavailableConnectionIds: [LIFT_2] })).structuredContent;
+    const backup = (await call('find_backup_route', { origin: 'VIC', destination: 'LNB', primaryRouteId: alt.route.routeId, unavailableConnectionIds: [LIFT_2] })).structuredContent;
+    if (backup.available) {
+      expect(backup.routeSignature).not.toBe('');
+      expect(backup.route.routeId).not.toBe(alt.route.routeId);
+      expect(backup.route.allConnectionIds).not.toContain(LIFT_2);
+      expect(backup.durationMinutes).toBeGreaterThanOrEqual(alt.route.durationMinutes);
+    } else {
+      expect(backup.status).toBe('NO_BACKUP');
+    }
+    await client.close();
+  });
+
+  it('says so when no backup exists, and never invents one', async () => {
+    const { client, call } = await connect();
+    const planned = (await call('plan_step_free_journey', { origin: 'Canada Water', destination: 'Canary Wharf' })).structuredContent;
+    const backup = (await call('find_backup_route', { origin: 'Canada Water', destination: 'Canary Wharf', primaryRouteId: planned.route.routeId })).structuredContent;
+    expect(backup).toMatchObject({ status: 'NO_BACKUP', available: false });
+    expect(backup.route).toBeUndefined();
+    await client.close();
+  });
+
+  it('validates its arguments against the graph and the primary route', async () => {
+    const { client, call } = await connect();
+    const planned = (await call('plan_step_free_journey', { origin: 'VIC', destination: 'LNB' })).structuredContent;
+    expect((await call('find_backup_route', { origin: 'VIC', destination: 'LNB', primaryRouteId: 'abcdefabcdef' })).isError).toBe(true);
+    expect((await call('find_backup_route', { origin: 'VIC', destination: 'KGX', primaryRouteId: planned.route.routeId })).isError).toBe(true);
+    expect((await call('find_backup_route', { origin: 'VIC', destination: 'LNB', primaryRouteId: planned.route.routeId, primaryConnectionIds: ['HUBKGX-Lift-1'] })).isError).toBe(true);
+    expect((await call('find_backup_route', { origin: 'VIC', destination: 'LNB', primaryRouteId: planned.route.routeId, unavailableConnectionIds: ['NOT-A-LIFT'] })).isError).toBe(true);
+    expect((await call('find_backup_route', { origin: 'VIC', destination: 'LNB', primaryRouteId: 'nope' })).isError).toBe(true);
+    await client.close();
+  });
+
+  it('computes Route Health deterministically from evidence', () => {
+    const required = ['A', 'B'];
+    expect(computeRouteHealth({ action: 'ROUTE_SELECTED', requiredConnectionIds: required, activeConnectionIds: [], affectedConnectionIds: [] })).toEqual({ status: 'CLEAR', affectedConnectionIds: [] });
+    expect(computeRouteHealth({ action: 'ROUTE_SELECTED', requiredConnectionIds: required, activeConnectionIds: ['Z'], affectedConnectionIds: [] }).status).toBe('CLEAR');
+    expect(computeRouteHealth({ action: 'ROUTE_RETAINED', requiredConnectionIds: required, activeConnectionIds: ['B'], affectedConnectionIds: [] })).toEqual({ status: 'AFFECTED', affectedConnectionIds: ['B'] });
+    expect(computeRouteHealth({ action: 'REROUTED', requiredConnectionIds: [], activeConnectionIds: ['B'], affectedConnectionIds: ['B'] })).toEqual({ status: 'REROUTED', affectedConnectionIds: ['B'] });
+    expect(computeRouteHealth({ action: 'NO_ROUTE', requiredConnectionIds: [], activeConnectionIds: ['B'], affectedConnectionIds: [] }).status).toBe('NO_ROUTE');
+  });
+
+  it('the journey response carries Route Health CLEAR, Plan B and a grounded Why this route before the outage', async () => {
+    const { app } = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
+    const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    expect(res.body.routeHealth).toEqual({ status: 'CLEAR', affectedConnectionIds: [] });
+    expect(res.body.planB).toMatchObject({ available: true, durationMinutes: 39, extraMinutes: 4 });
+    expect(res.body.planB.stations).toContain('Westminster');
+    expect(res.body.planB.route.totalMinutes).toBe(39);
+    expect(res.body.planB.avoided[0]).toMatchObject({ connectionId: LIFT_2, station: 'Green Park', name: 'Lift 2' });
+    const why: string[] = res.body.whyThisRoute.reasons;
+    expect(why[0]).toBe('The shortest step-free route that is currently usable');
+    expect(why).toContain('All the lifts and step-free connections it needs are working right now');
+    expect(why).toContain('About 35 minutes, including time in stations');
+    expect(why).toContain('A backup route is ready if this one becomes unusable (+4 min)');
+    expect(why.some((r) => /lift/.test(r) && /cannot do without/.test(r))).toBe(true);
+    expect(JSON.stringify(why)).not.toMatch(/cypher|graph|node|MATCH|algo\./i);
+    // The trace shows the Plan B tool as the model's own choice, separate from the user-facing explanation.
+    expect(tools(res)).toContain('find_backup_route');
+    expect(res.body.trace.find((t: any) => t.tool === 'find_backup_route').summary).toMatch(/Plan B/);
+  });
+
+  it('after the outage: REROUTED, and Plan B is recalculated against the new route', async () => {
+    const first = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
+    const started = await journey(first.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    expect(started.body.planB.durationMinutes).toBe(39);
+    const routeId = first.runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
+    first.runtime.agent['deps'].model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
+    const res = await journey(first.app, { sessionId: started.body.sessionId, mode: 'demo', demoOutage: true });
+    expect(res.body.status).toBe('REROUTED');
+    expect(res.body.routeHealth).toEqual({ status: 'REROUTED', affectedConnectionIds: [LIFT_2] });
+    expect(res.body.route.route.totalMinutes).toBe(39);
+    // The old Plan B is now the primary route; it must not be shown as a separate backup.
+    expect(res.body.planB.route?.routeId ?? null).not.toBe(res.body.route.route.nodeIds);
+    if (res.body.planB.available) {
+      expect(res.body.planB.routeSignature).not.toBe(started.body.planB.routeSignature);
+      expect(res.body.planB.avoided[0].connectionId).not.toBe(LIFT_2);
+    }
+    expect(res.body.whyThisRoute.reasons[0]).toMatch(/Green Park Lift 2 is unavailable, so this is the fastest step-free route that avoids it/);
+    expect(res.body.whyThisRoute.reasons.at(-1)).toMatch(res.body.planB.available ? /backup route is ready/ : /No backup route is currently available/);
+    const decisions = await routing.decisions(started.body.sessionId);
+    expect(decisions.map((d) => [d.action, d.routeHealth, d.backupAvailable])).toEqual([
+      ['ROUTE_SELECTED', 'CLEAR', true],
+      ['REROUTED', 'REROUTED', res.body.planB.available],
+    ]);
+  });
+
+  it('a decision cannot be recorded for a route whose Plan B was never looked up', async () => {
+    const { app, runtime } = await boot(null);
+    runtime.agent['deps'].model = scriptedModel([
+      { name: 'plan_step_free_journey', args: { origin: 'Victoria', destination: 'London Bridge' } },
+      { name: 'get_accessibility_disruptions', args: { mode: 'demo' } },
+      { name: 'record_journey_decision', args: { sessionId: 'abcdefgh', origin: 'Victoria', destination: 'London Bridge', action: 'ROUTE_SELECTED', reasonCode: 'NO_DISRUPTION', routeSummary: { routeId: '000000000000' } } },
+    ]);
+    const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    const rejected = res.body.trace.at(-1);
+    expect(rejected).toMatchObject({ tool: 'record_journey_decision', ok: false });
+    expect(res.body.route).toBeNull();
+  });
+
+  it('reports NO_ROUTE health with no Plan B and no explanation', async () => {
+    const { app } = await boot(policyModel({ origin: "St James's Park", destination: 'London Bridge' }));
+    const res = await journey(app, { origin: "St James's Park", destination: 'London Bridge', mode: 'demo' });
+    expect(res.body.status).toBe('NO_ROUTE');
+    expect(res.body.routeHealth).toEqual({ status: 'NO_ROUTE', affectedConnectionIds: [] });
+    expect(res.body.planB).toBeNull();
+    expect(res.body.whyThisRoute).toBeNull();
+    expect(tools(res)).not.toContain('find_backup_route');
+  });
+
+  it('keeps the unsupported station and unavailable agent states free of Plan B data', async () => {
+    const { app } = await boot(policyModel({ origin: 'Atlantis', destination: 'London Bridge' }));
+    const unknown = await journey(app, { origin: 'Atlantis', destination: 'London Bridge', mode: 'demo' });
+    expect(unknown.body).toMatchObject({ status: 'UNKNOWN_STATION', routeHealth: null, planB: null, whyThisRoute: null });
+    const down = await boot(null);
+    const res = await journey(down.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    expect(res.body).toMatchObject({ status: 'AGENT_UNAVAILABLE', routeHealth: null, planB: null });
+  });
+
+  it('does not expose model reasoning or Cypher in the trace', async () => {
+    const { app } = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
+    const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    expect(JSON.stringify(res.body.trace)).not.toMatch(/thought|reasoning|MATCH \(|algo\./i);
+    expect(Object.keys(res.body.trace[0]).sort()).toEqual(['args', 'durationMs', 'ok', 'result', 'step', 'summary', 'tool']);
   });
 });

@@ -116,12 +116,35 @@ export interface TraceEntry {
   durationMs: number;
 }
 
+export interface RouteHealth {
+  status: 'CLEAR' | 'AFFECTED' | 'REROUTED' | 'NO_ROUTE';
+  affectedConnectionIds: string[];
+}
+
+/** A backup route found before anything broke. Different from a reroute, which is what the agent selects after a disruption. */
+export interface PlanB {
+  available: boolean;
+  durationMinutes: number | null;
+  extraMinutes: number | null;
+  route: Route | null;
+  stations: string[];
+  lines: string[];
+  avoided: { connectionId: string; station: string; name: string }[];
+}
+
+export interface WhyThisRoute {
+  reasons: string[];
+}
+
 export interface AgentResponse {
   sessionId: string;
   status: AgentStatus;
   message: string;
   /** The journey in the same shape the map and journey panel already use. */
   route: RouteResponse | null;
+  routeHealth: RouteHealth | null;
+  planB: PlanB | null;
+  whyThisRoute: WhyThisRoute | null;
   dependencies: { station: string; kind: string; lifts: string[]; requiredConnectionIds: string[] }[];
   disruptions: { connectionId: string; station: string; name: string; message: string }[];
   trace: TraceEntry[];

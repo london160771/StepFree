@@ -22,6 +22,7 @@ export function policyModel(options: { origin: string; destination: string; rech
       const used = (name: string) => seen.filter((s) => s.call.name === name);
       const last = (name: string) => used(name).at(-1)?.result;
       const { origin, destination } = options;
+      const hasBackup = (routeId: string) => used('find_backup_route').some((s) => s.call.args.primaryRouteId === routeId);
       const decide = (): ModelStep => {
         const planned = last('plan_step_free_journey');
         const current: string | undefined = options.recheckRouteId;
@@ -42,6 +43,8 @@ export function policyModel(options: { origin: string; destination: string; rech
           const alt = last('find_alternative_route');
           if (!alt) return call('find_alternative_route', { origin, destination, unavailableConnectionIds: relevant });
           if (alt.status !== 'ROUTE_FOUND') return call('record_journey_decision', { sessionId: 'x'.repeat(8), origin, destination, action: 'NO_ROUTE', reasonCode: 'NO_ALTERNATIVE' });
+          // The new route is the one being kept, so look for its Plan B before recording.
+          if (!hasBackup(alt.routeId)) return call('find_backup_route', { origin, destination, primaryRouteId: alt.routeId });
           return call('record_journey_decision', {
             sessionId: 'x'.repeat(8),
             origin,
@@ -55,6 +58,7 @@ export function policyModel(options: { origin: string; destination: string; rech
         // Nothing relevant is out. After a re-check, plan again in case something faster is now available.
         if (current && !planned) return call('plan_step_free_journey', { origin, destination });
         const chosen: string = current && planned?.status === 'ROUTE_FOUND' ? planned.routeId : (current ?? planned.routeId);
+        if (!hasBackup(chosen)) return call('find_backup_route', { origin, destination, primaryRouteId: chosen });
         return call('record_journey_decision', {
           sessionId: 'x'.repeat(8),
           origin,

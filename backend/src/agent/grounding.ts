@@ -6,6 +6,8 @@ export interface GroundingFacts {
   durationMinutes: number | null;
   /** Duration of the route that was replaced, for REROUTED messages. */
   previousMinutes: number | null;
+  /** Duration of the Plan B route, if one was found (it may be mentioned alongside the main duration). */
+  backupMinutes: number | null;
   /** Names of the supported stations on the final route, plus origin and destination. */
   routeStations: string[];
   /** Station where the new route changes line (used as "through ..."), if any. */
@@ -32,7 +34,7 @@ export function deterministicMessage(facts: GroundingFacts): string {
       const out = facts.disruptions.length > 0 ? facts.disruptions.map((d) => `${d.station} ${d.name}`).join(' and ') : 'A lift on your route';
       const plural = facts.disruptions.length > 1 ? 'are' : 'is';
       const via = facts.viaStation ? ` through ${facts.viaStation}` : '';
-      return `${out} ${plural} unavailable and your current journey depended on it. I've found another step-free route${via}. It takes about ${minutes} minutes.`;
+      return `${out} ${plural} unavailable and your previous journey depended on it. I've found another step-free route${via}. It takes about ${minutes} minutes.`;
     }
     case 'NO_ROUTE':
       return facts.noRouteReason ?? 'No step-free route is currently available in the supported network.';
@@ -55,7 +57,7 @@ export function groundedMessage(modelText: string | null, facts: GroundingFacts,
 
 export function claimsAreSupported(text: string, facts: GroundingFacts, supportedStations: string[]): boolean {
   // Durations: every "<n> min(ute)s" must be the final route's duration, or (for a reroute) the replaced route's.
-  const allowedMinutes = new Set([facts.durationMinutes, facts.action === 'REROUTED' ? facts.previousMinutes : null].filter((n): n is number => n !== null));
+  const allowedMinutes = new Set([facts.durationMinutes, facts.backupMinutes, facts.action === 'REROUTED' ? facts.previousMinutes : null].filter((n): n is number => n !== null));
   for (const match of text.matchAll(/(\d+)\s*(?:min|minute|minutes|mins)\b/gi)) {
     if (!allowedMinutes.has(Number(match[1]))) return false;
   }

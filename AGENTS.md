@@ -46,8 +46,9 @@ Do not combine the frontend and backend into one application folder.
 ## Agent rules
 
 - Runtime path: Gemini chooses a tool, the backend agent host executes it through a real MCP client against the StepFree MCP server, FalkorDB/TfL answer, the host enforces the evidence guards, and a grounded decision plus action trace go to the UI. Do not fake MCP with direct function calls.
-- The fixed tool catalogue is `resolve_station`, `plan_step_free_journey`, `inspect_route_dependencies`, `get_accessibility_disruptions`, `find_alternative_route`, `record_journey_decision`. Add no tool that accepts query text, code, files, shell or arbitrary HTTP. The model never writes Cypher; every query is fixed, human-written and parameterised, with arguments validated by Zod and then against the graph.
+- The fixed tool catalogue is `resolve_station`, `plan_step_free_journey`, `inspect_route_dependencies`, `get_accessibility_disruptions`, `find_alternative_route`, `find_backup_route` (Plan B), `record_journey_decision`. Add no tool that accepts query text, code, files, shell or arbitrary HTTP. The model never writes Cypher; every query is fixed, human-written and parameterised, with arguments validated by Zod and then against the graph.
 - FalkorDB stays the routing brain; the model does not compute routes and the browser does not decide to reroute. The frontend only reports state (for example `demoOutage`) and renders what the agent decided.
+- Plan B (`find_backup_route`), Route Health and Why this route? are computed by the backend from FalkorDB and tool evidence only: no hard-coded backup, no model-written health or explanation, no extra Gemini call. Plan B is a preview, distinct from a reroute.
 - Never expose `GEMINI_API_KEY` to the frontend or commit it. Never send raw GPS to the model; Live Mode passes only the nearest supported station.
 - Do not silently bypass the agent when the model is down: say "Journey agent is temporarily unavailable." Deterministic fake models are for automated tests only.
 - Keep `README.md` accurate about AI use: Claude Code (Anthropic) as the coding assistant, Gemini as the separate runtime model.

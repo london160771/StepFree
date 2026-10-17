@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type AgentResponse, type LiftDisruption, type Mode, type NetworkResponse, type Route, type TraceEntry } from './api';
+import { api, type AgentResponse, type LiftDisruption, type Mode, type NetworkResponse, type PlanB, type Route, type RouteHealth, type TraceEntry, type WhyThisRoute } from './api';
 import { placeOnMap, schematicPositions, type Point } from './map/layout';
 
 export type Phase = 'idle' | 'finding' | 'route' | 'outage' | 'recalculating' | 'rerouted' | 'noroute';
@@ -40,6 +40,9 @@ export function useStepFree() {
   const [journeyKey, setJourneyKey] = useState('0');
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
   const [trace, setTrace] = useState<TraceEntry[]>([]);
+  const [routeHealth, setRouteHealth] = useState<RouteHealth | null>(null);
+  const [planB, setPlanB] = useState<PlanB | null>(null);
+  const [why, setWhy] = useState<WhyThisRoute | null>(null);
   const sessionId = useRef<string | null>(null);
   const run = useRef(0);
 
@@ -66,6 +69,9 @@ export function useStepFree() {
     setError(null);
     setAgentMessage(null);
     setTrace([]);
+    setRouteHealth(null);
+    setPlanB(null);
+    setWhy(null);
     sessionId.current = null;
   }, []);
 
@@ -114,6 +120,9 @@ export function useStepFree() {
       setNoRouteReason(journey.noRouteReason);
       setAgentMessage(res.message);
       setTrace(res.trace);
+      setRouteHealth(res.routeHealth);
+      setPlanB(res.planB);
+      setWhy(res.whyThisRoute);
       setJourneyKey(`${Date.now()}`);
       setPhase(journey.route ? 'route' : 'noroute');
     } catch (e) {
@@ -152,6 +161,9 @@ export function useStepFree() {
       setNoRouteReason(journey.noRouteReason);
       setAgentMessage(res.message);
       setTrace(res.trace);
+      setRouteHealth(res.routeHealth);
+      setPlanB(res.planB);
+      setWhy(res.whyThisRoute);
       setJourneyKey(`${Date.now()}`);
       setPhase(journey.route ? 'rerouted' : 'noroute');
     } catch (e) {
@@ -231,6 +243,9 @@ export function useStepFree() {
     noRouteReason,
     agentMessage,
     trace,
+    routeHealth,
+    planB,
+    why,
     error,
     journeyKey,
     findRoute,

@@ -52,6 +52,8 @@ Show the safety note exactly as written: **based on currently available TfL acce
 
 ### How StepFree decided
 
+Beside the route result, three compact additions stay within the existing cards and type: a small **Route Health** status (Clear, Affected, Rerouted, No step-free route) under the **Step-free route** badge; a collapsed **Plan B** row (“Backup available · 39 min +4 min”, expanding to stations, lines and duration, or “No backup route currently available”); and a collapsed **Why this route?** disclosure of plain-language reasons. Plan B is a preview and is never drawn as the active route. **Why this route?** is the user's explanation and is kept separate from the technical trace below.
+
 Below the route result, a compact, collapsed-by-default disclosure titled **How StepFree decided** lists the agent's actions in plain words (for example “Asked FalkorDB for a step-free route: 35 min via …”, “Detected Green Park Lift 2 unavailable”), each with the tool name and duration in small type. Lines come from structured tool results returned by the backend, never from model text or reasoning. It is a native `<details>` disclosure (keyboard and screen-reader friendly), not a chatbot, floating assistant or AI branding. Above the route card, one short sentence states the agent's result in plain language (for example “Your step-free route is ready. It takes about 35 minutes.”). After the outage, the banner carries the agent's explanation of what changed.
 
 ## Demo Mode flow

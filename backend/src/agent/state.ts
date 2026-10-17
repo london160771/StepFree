@@ -9,8 +9,10 @@ export interface StoredRoute {
   /** Lifts excluded when FalkorDB computed this route. */
   excludedConnectionIds: string[];
   /** Which tool produced it. */
-  source: 'plan_step_free_journey' | 'find_alternative_route';
+  source: 'plan_step_free_journey' | 'find_alternative_route' | 'find_backup_route';
   dependencies?: RouteDependency[];
+  /** Latest Plan B lookup for this route (a pointer to the stored backup route, if there was one). */
+  backup?: { available: boolean; routeId: string | null };
 }
 
 export interface JourneySessionState {

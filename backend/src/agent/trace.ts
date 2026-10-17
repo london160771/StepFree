@@ -39,6 +39,20 @@ export function compactResult(tool: string, result: any): unknown {
         };
       }
       return result;
+    case 'find_backup_route':
+      if (result?.available) {
+        return {
+          status: result.status,
+          primaryRouteId: result.primaryRouteId,
+          routeId: result.route.routeId,
+          durationMinutes: result.durationMinutes,
+          extraMinutes: result.extraMinutes,
+          stations: result.route.stations,
+          avoidedConnectionIds: result.avoidedConnectionIds,
+          candidatesChecked: result.candidatesChecked,
+        };
+      }
+      return result;
     case 'inspect_route_dependencies':
       return {
         routeId: result.routeId,
@@ -67,6 +81,10 @@ export function describeStep(tool: string, args: Record<string, any>, result: an
       return routeLine('Asked FalkorDB for a step-free route', result);
     case 'find_alternative_route':
       return routeLine('Asked FalkorDB for another step-free route', result);
+    case 'find_backup_route':
+      return result.available
+        ? `Looked for a Plan B: ${result.durationMinutes} min (+${result.extraMinutes} min) via ${result.route.stations.join(', ')}`
+        : 'Looked for a Plan B: no other step-free route is available';
     case 'inspect_route_dependencies': {
       const n = result.dependencies.length;
       return `Checked the ${n} accessibility connection${n === 1 ? '' : 's'} the route relies on`;

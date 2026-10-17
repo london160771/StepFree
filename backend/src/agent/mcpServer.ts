@@ -5,6 +5,7 @@ import type { Request, RequestHandler, Response } from 'express';
 import {
   ToolError,
   alternativeInput,
+  backupInput,
   disruptionsInput,
   inspectInput,
   planJourneyInput,
@@ -88,6 +89,18 @@ export function createStepFreeMcpServer(toolbox: StepFreeToolbox): McpServer {
       inputSchema: alternativeInput,
     },
     (input) => respond(() => toolbox.findAlternativeRoute(input)),
+  );
+
+  server.registerTool(
+    'find_backup_route',
+    {
+      description:
+        'Plan B: ask FalkorDB for a backup step-free route that is genuinely different from the route you pass in, computed before anything goes wrong. ' +
+        'For each lift the primary route uses, it finds the shortest route without that lift and keeps the fastest distinct one. ' +
+        'Returns available=false if no other valid route exists. Do not use it to replace the route: a backup is only a preview. After a disruption forces a change, use find_alternative_route instead.',
+      inputSchema: backupInput,
+    },
+    (input) => respond(() => toolbox.findBackupRoute(input)),
   );
 
   server.registerTool(

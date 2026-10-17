@@ -163,10 +163,13 @@ describe('Journey session and decision memory', () => {
       routeDuration: 39,
       affectedConnectionIds: [network.demoOutage.liftUniqueId],
       affectedStationIds: ['GPK'],
+      routeHealth: 'REROUTED',
+      backupAvailable: true,
+      backupRouteId: 'fedcbafedcba',
     });
     expect(id).toMatch(/^D-/);
     const decisions = await routing.decisions('session-graph-test');
-    expect(decisions).toEqual([{ id, action: 'REROUTED', reasonCode: 'REQUIRED_LIFT_UNAVAILABLE', routeDuration: 39, affectedStationIds: ['GPK'] }]);
+    expect(decisions).toEqual([{ id, action: 'REROUTED', reasonCode: 'REQUIRED_LIFT_UNAVAILABLE', routeDuration: 39, affectedStationIds: ['GPK'], routeHealth: 'REROUTED', backupAvailable: true }]);
     const edges = await routing.edges(routing.baseGraph);
     expect(edges.every((e) => e.type === 'RIDE' || e.type === 'STEP_FREE_TRANSFER')).toBe(true);
     expect(expectRoute(await routing.route('VIC', 'LNB', routing.baseGraph))).toEqual(before);
