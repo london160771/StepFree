@@ -15,6 +15,7 @@ export function policyModel(options: { origin: string; destination: string; rech
     toolNames,
     start({ goal, tools }): AgentModelRun {
       goals.push(goal);
+      const goalText = goal;
       toolNames.push(tools.map((t) => t.name));
       const seen: Seen = [];
       let pending: ModelToolCall[] | null = null;
@@ -22,24 +23,18 @@ export function policyModel(options: { origin: string; destination: string; rech
       const last = (name: string) => used(name).at(-1)?.result;
       const { origin, destination } = options;
       const decide = (): ModelStep => {
-        if (used('resolve_station').some((s) => s.result.found === false)) return { kind: 'text', text: "That station isn't supported." };
-        if (!options.recheckRouteId) {
-          for (const station of [origin, destination]) {
-            if (!used('resolve_station').some((s) => s.call.args.station === station)) return call('resolve_station', { station });
-          }
-        }
         const planned = last('plan_step_free_journey');
         const current: string | undefined = options.recheckRouteId;
-        if (current && !used('inspect_route_dependencies').some((s) => s.call.args.routeId === current)) return call('inspect_route_dependencies', { routeId: current });
+        // Unsupported station: the planner says so, and there is nothing more to do.
+        if (planned?.status === 'UNKNOWN_STATION') return { kind: 'text', text: "That station isn't supported." };
         if (!current && !planned) return call('plan_step_free_journey', { origin, destination });
         if (!current && planned.status === 'NO_ROUTE') {
           return last('record_journey_decision') ? finish() : call('record_journey_decision', { sessionId: 'x'.repeat(8), origin, destination, action: 'NO_ROUTE', reasonCode: 'NO_STEP_FREE_ROUTE' });
         }
-        const baseId: string = current ?? planned.routeId;
-        if (!current && !used('inspect_route_dependencies').some((s) => s.call.args.routeId === baseId)) return call('inspect_route_dependencies', { routeId: baseId });
-        const deps = used('inspect_route_dependencies').find((s) => s.call.args.routeId === baseId)!.result;
+        // The route's required connections come with the plan result (or, on a re-check, with the goal text).
+        const required: string[] = current ? JSON.parse(goalText.match(/requires these connections: (\[.*?\])/)![1]) : planned.requiredConnectionIds;
         if (!last('get_accessibility_disruptions')) {
-          return call('get_accessibility_disruptions', { mode: 'demo', relevantConnectionIds: deps.requiredConnectionIds });
+          return call('get_accessibility_disruptions', { mode: 'demo', relevantConnectionIds: required });
         }
         if (last('record_journey_decision')) return finish();
         const relevant = last('get_accessibility_disruptions').disruptions.filter((d: any) => d.relevant).map((d: any) => d.connectionId);
@@ -57,12 +52,9 @@ export function policyModel(options: { origin: string; destination: string; rech
             routeSummary: { routeId: alt.routeId },
           });
         }
-        // Nothing relevant is out. After a recheck, plan again in case something faster is now available.
+        // Nothing relevant is out. After a re-check, plan again in case something faster is now available.
         if (current && !planned) return call('plan_step_free_journey', { origin, destination });
-        const chosen: string = current && planned?.status === 'ROUTE_FOUND' ? planned.routeId : baseId;
-        if (current && chosen !== current && !used('inspect_route_dependencies').some((s) => s.call.args.routeId === chosen)) {
-          return call('inspect_route_dependencies', { routeId: chosen });
-        }
+        const chosen: string = current && planned?.status === 'ROUTE_FOUND' ? planned.routeId : (current ?? planned.routeId);
         return call('record_journey_decision', {
           sessionId: 'x'.repeat(8),
           origin,

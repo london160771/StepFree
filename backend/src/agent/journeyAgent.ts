@@ -12,7 +12,7 @@ import {
 import { ModelUnavailableError, type AgentModel, type ModelToolCall, type ModelToolResult } from './model.js';
 import type { AgentState, JourneySessionState } from './state.js';
 import { compactResult, describeStep, type TraceEntry } from './trace.js';
-import { TOOL_NAMES, type DependencyToolResult, type DisruptionToolResult, type RouteToolResult } from './toolbox.js';
+import { TOOL_NAMES, describeDependencies, type DependencyToolResult, type DisruptionToolResult, type RouteToolResult } from './toolbox.js';
 
 /** Most MCP tool calls one agent request may make. The normal journey needs six; a reroute needs seven. */
 export const MAX_TOOL_CALLS = 8;
@@ -93,11 +93,12 @@ class Abort extends Error {
 const SYSTEM_PROMPT = [
   'You are the StepFree journey agent. StepFree finds step-free London Underground routes for wheelchair users, older people, injured people and parents with pushchairs.',
   'You act only by calling the StepFree tools. FalkorDB computes every route: never invent stations, routes, times, lines or lift states, and never describe anything a tool did not return.',
-  'Procedure for a new journey: (1) resolve_station for each station named. If a station is not found, stop and tell the traveller it is not in the supported network; call no other tool.',
-  '(2) plan_step_free_journey. (3) inspect_route_dependencies for the route you got. (4) get_accessibility_disruptions, passing the route requiredConnectionIds as relevantConnectionIds.',
-  '(5) If a disruption is on a required connection of the route, call find_alternative_route with those connection ids as unavailableConnectionIds and record REROUTED with that alternative routeId and the affected connection ids.',
+  'Procedure for a new journey: (1) plan_step_free_journey with the two stations as given. It resolves them itself and returns the route together with the connections it depends on (requiredConnectionIds). If it returns UNKNOWN_STATION, stop and tell the traveller that station is not in the supported network; call no other tool.',
+  '(2) get_accessibility_disruptions, passing the route requiredConnectionIds as relevantConnectionIds.',
+  '(3) If a disruption is on a required connection of the route, call find_alternative_route with those connection ids as unavailableConnectionIds and record REROUTED with that alternative routeId and the affected connection ids.',
   'If planning returned NO_ROUTE, record NO_ROUTE. Otherwise record ROUTE_SELECTED with the planned routeId.',
-  'When re-checking a journey that already has a route: inspect that route, check disruptions, record ROUTE_RETAINED if it is still usable, REROUTED if a required connection is now out, or, if no disruption remains and a faster route exists, plan again and record ROUTE_SELECTED.',
+  'When re-checking a journey that already has a route, its requiredConnectionIds are given to you: call get_accessibility_disruptions with them. Record ROUTE_RETAINED if the route is still usable, REROUTED (after find_alternative_route) if a required connection is now out, or, if no disruption remains and a faster route may exist, plan again and record ROUTE_SELECTED.',
+  'Use resolve_station or inspect_route_dependencies only if you are genuinely unsure; they are rarely needed.',
   'Always finish by calling record_journey_decision once, then reply in one or two short, plain sentences for the traveller, quoting the duration in minutes exactly as the tool returned it. Do not mention graphs, tools or databases.',
 ].join('\n');
 
@@ -158,8 +159,11 @@ export class JourneyAgent {
       const tools = listed.tools.map((t) => ({ name: t.name, description: t.description ?? '', inputSchema: t.inputSchema as Record<string, unknown> }));
       if (!TOOL_NAMES.every((name) => tools.some((t) => t.name === name))) throw new Abort('AGENT_UNAVAILABLE', AGENT_UNAVAILABLE_MESSAGE);
 
+      // A re-check reuses what the graph already told us about the current route instead of asking again.
+      const current = recheck && startRouteId ? state.routes.get(startRouteId) : undefined;
+      if (current) ev.dependencies.set(current.id, describeDependencies(current, routing.network.stations));
       const goal = recheck
-        ? `Re-check journey session ${session.id} (${request.mode} mode) from ${originText} to ${destinationText}. The selected route is routeId ${startRouteId} (${state.routes.get(startRouteId!)?.route.totalMinutes} min). The accessibility situation may have changed. Decide whether that route is still usable and act on what the tools show.`
+        ? `Re-check journey session ${session.id} (${request.mode} mode) from ${originText} to ${destinationText}. The selected route is routeId ${startRouteId} (${current?.route.totalMinutes} min) and it requires these connections: ${JSON.stringify(ev.dependencies.get(startRouteId!)?.requiredConnectionIds ?? [])}. The accessibility situation may have changed. Decide whether that route is still usable and act on what the tools show.`
         : `Find a currently usable step-free journey from ${originText} to ${destinationText}. Journey session id: ${session.id}. Mode: ${request.mode}. Use only StepFree tools and graph evidence.`;
       const modelRun = model.start({ system: SYSTEM_PROMPT, goal, tools });
 
@@ -203,7 +207,7 @@ export class JourneyAgent {
               outcome = { ok: false, result: { error: 'DECISION_NOT_SUPPORTED', message: rejected } };
             } else {
               outcome = await callTool(client, call.name, args);
-              if (outcome.ok) absorb(ev, call.name, args, outcome.result);
+              if (outcome.ok) absorb(ev, call.name, args, outcome.result, (id) => { const r = state.routes.get(id); return r && describeDependencies(r, routing.network.stations); });
               else if (outcome.result?.error === 'TFL_UNAVAILABLE') ev.tflDown = true;
             }
           }
@@ -351,7 +355,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<
 }
 
 /** Fold a successful tool result into the evidence the guards check. */
-function absorb(ev: Evidence, tool: string, args: Record<string, any>, result: any): void {
+function absorb(ev: Evidence, tool: string, args: Record<string, any>, result: any, dependenciesOf: (routeId: string) => DependencyToolResult | undefined): void {
   switch (tool) {
     case 'resolve_station':
       if (result.found) {
@@ -362,8 +366,15 @@ function absorb(ev: Evidence, tool: string, args: Record<string, any>, result: a
     case 'plan_step_free_journey':
     case 'find_alternative_route': {
       const r = result as RouteToolResult;
+      if (r.status !== 'UNKNOWN_STATION') {
+        // The planner resolved both names against the graph; remember which stations the traveller's words mean.
+        ev.resolvedIds.set(stationKey(args.origin), r.originId);
+        ev.resolvedIds.set(stationKey(args.destination), r.destinationId);
+      }
       if (r.status === 'ROUTE_FOUND') {
         ev.routes.set(r.route.routeId, { ...r, tool });
+        const deps = dependenciesOf(r.route.routeId);
+        if (deps) ev.dependencies.set(r.route.routeId, deps);
         if (tool === 'plan_step_free_journey' && r.excludedConnectionIds.length === 0) ev.firstPlanRouteId ??= r.route.routeId;
       } else if (r.status === 'NO_ROUTE') ev.noRoutes.push({ origin: r.origin, destination: r.destination, reason: r.reason });
       else ev.unknown.push(...r.unknown);
@@ -423,7 +434,7 @@ export function guardDecision(
   }
   if (!ev.disruption) return 'Check get_accessibility_disruptions before recording this decision.';
   if (args.action === 'ROUTE_SELECTED' || args.action === 'ROUTE_RETAINED') {
-    if (!ev.dependencies.has(routeId!)) return 'Inspect this route’s dependencies with inspect_route_dependencies first.';
+    if (!ev.dependencies.has(routeId!)) return 'This route’s dependencies are not known. Plan it with plan_step_free_journey first.';
     const blocked = conflicts(routeId!);
     if (blocked.length > 0) return `This route requires ${blocked.join(', ')}, which is unavailable. Use find_alternative_route and record REROUTED.`;
   }
@@ -431,7 +442,7 @@ export function guardDecision(
     const affected: string[] = args.affectedConnectionIds ?? [];
     if (affected.length === 0 || !affected.every((id) => active.has(id))) return 'REROUTED needs affectedConnectionIds that get_accessibility_disruptions reported.';
     const previousId = startRouteId ?? ev.firstPlanRouteId;
-    if (!previousId || !ev.dependencies.has(previousId)) return 'Inspect the current route’s dependencies before rerouting.';
+    if (!previousId || !ev.dependencies.has(previousId)) return 'The current route’s dependencies are not known.';
     if (!conflicts(previousId).some((id) => affected.includes(id))) return 'The current route does not depend on the affected connections, so it does not need rerouting.';
     if (!affected.every((id) => found!.excludedConnectionIds.includes(id))) return 'The alternative route must exclude every affected connection.';
   }

@@ -27,7 +27,16 @@ export function compactResult(tool: string, result: any): unknown {
     case 'find_alternative_route':
       if (result?.status === 'ROUTE_FOUND') {
         const r = result.route;
-        return { status: result.status, routeId: r.routeId, durationMinutes: r.durationMinutes, stations: r.stations, lines: r.lines, changes: r.changes, excludedConnectionIds: result.excludedConnectionIds };
+        return {
+          status: result.status,
+          routeId: r.routeId,
+          durationMinutes: r.durationMinutes,
+          stations: r.stations,
+          lines: r.lines,
+          changes: r.changes,
+          requiredConnectionIds: r.requiredConnectionIds,
+          excludedConnectionIds: result.excludedConnectionIds,
+        };
       }
       return result;
     case 'inspect_route_dependencies':
@@ -78,7 +87,10 @@ export function describeStep(tool: string, args: Record<string, any>, result: an
 }
 
 function routeLine(prefix: string, result: any): string {
-  if (result.status === 'ROUTE_FOUND') return `${prefix}: ${result.route.durationMinutes} min via ${result.route.stations.join(', ')}`;
+  if (result.status === 'ROUTE_FOUND') {
+    const n = result.route.dependencyCount;
+    return `${prefix}: ${result.route.durationMinutes} min via ${result.route.stations.join(', ')}, relying on ${n} accessibility connection${n === 1 ? '' : 's'}`;
+  }
   if (result.status === 'UNKNOWN_STATION') return `${prefix}: station not in the supported network`;
   return `${prefix}: no step-free route found`;
 }

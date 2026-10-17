@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
@@ -101,6 +102,21 @@ describe('MCP server', () => {
     await client.close();
   });
 
+  it('plan_step_free_journey resolves names itself and returns canonical names and the route dependencies', async () => {
+    const { runtime } = await boot(null);
+    const client = new Client({ name: 'test', version: '1' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), { requestInit: { headers: { authorization: `Bearer ${runtime.mcpToken}` } } }));
+    const planned = ((await client.callTool({ name: 'plan_step_free_journey', arguments: { origin: 'victoria station', destination: 'london bridge' } })) as any).structuredContent;
+    expect(planned).toMatchObject({ status: 'ROUTE_FOUND', origin: 'Victoria', destination: 'London Bridge', originId: 'VIC', destinationId: 'LNB' });
+    expect(planned.route.requiredConnectionIds).toContain(LIFT_2);
+    expect(planned.route.dependencyCount).toBe(3);
+    // The separate inspect tool still exists and agrees with what the planner returned.
+    const inspected = ((await client.callTool({ name: 'inspect_route_dependencies', arguments: { routeId: planned.route.routeId } })) as any).structuredContent;
+    expect(inspected.requiredConnectionIds).toEqual(planned.route.requiredConnectionIds);
+    expect(inspected.dependencies).toHaveLength(3);
+    await client.close();
+  });
+
   it('reads route dependencies from the graph: the Demo route needs Green Park Lift 2', async () => {
     const { runtime } = await boot(null);
     const client = new Client({ name: 'test', version: '1' });
@@ -125,7 +141,7 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
     const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ROUTE_SELECTED');
-    expect(tools(res)).toEqual(['resolve_station', 'resolve_station', 'plan_step_free_journey', 'inspect_route_dependencies', 'get_accessibility_disruptions', 'record_journey_decision']);
+    expect(tools(res)).toEqual(['plan_step_free_journey', 'get_accessibility_disruptions', 'record_journey_decision']);
     expect(res.body.route.route.totalMinutes).toBe(35);
     expect(res.body.route.route.stations).toEqual(['VIC', 'GPK', 'WSM', 'WLO', 'SWK', 'LNB']);
     expect(res.body.message).toBe('Your step-free route is ready. It takes about 35 minutes.');
@@ -146,7 +162,7 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
     expect(res.status).toBe(200);
     expect(res.body.sessionId).toBe(started.body.sessionId);
     expect(res.body.status).toBe('REROUTED');
-    expect(tools(res)).toEqual(['inspect_route_dependencies', 'get_accessibility_disruptions', 'find_alternative_route', 'record_journey_decision']);
+    expect(tools(res)).toEqual(['get_accessibility_disruptions', 'find_alternative_route', 'record_journey_decision']);
     expect(res.body.route.route.totalMinutes).toBe(39);
     expect(res.body.route.route.stations).toEqual(['VIC', 'SJP', 'WSM', 'WLO', 'SWK', 'LNB']);
     expect(res.body.route.unavailable.lifts.map((l: any) => l.liftUniqueId)).toEqual([LIFT_2]);
@@ -208,7 +224,8 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
     expect(res.body.status).toBe('UNKNOWN_STATION');
     expect(res.body.route).toBeNull();
     expect(res.body.message).toBe("That station isn't in StepFree's current supported network.");
-    expect(tools(res)).toEqual(['resolve_station']);
+    expect(tools(res)).toEqual(['plan_step_free_journey']);
+    expect(res.body.trace[0].result).toEqual({ status: 'UNKNOWN_STATION', unknown: ['Atlantis'] });
   });
 
   it('routes between stations the original seven did not cover, still through the agent', async () => {
@@ -361,5 +378,79 @@ describe('Grounded wording', () => {
 
   it('has fixed copy for every outcome', () => {
     expect(deterministicMessage({ ...facts, action: 'UNKNOWN_STATION' })).toBe("That station isn't in StepFree's current supported network.");
+  });
+});
+
+describe('Efficiency: the common flows use few tool calls', () => {
+  it('a normal journey is 3 MCP calls: plan, disruptions, record', async () => {
+    const { app } = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
+    const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    expect(res.body.trace).toHaveLength(3);
+    expect(res.body.agent.toolCalls).toBe(3);
+    expect(tools(res)).not.toContain('resolve_station');
+    expect(tools(res)).not.toContain('inspect_route_dependencies');
+    // The planner's dependency data is what the disruption check is scoped to, and what the response reports.
+    const plan = res.body.trace[0];
+    expect(plan.result.requiredConnectionIds).toContain(LIFT_2);
+    expect(res.body.trace[1].args.relevantConnectionIds).toEqual(plan.result.requiredConnectionIds);
+    expect(res.body.dependencies.length).toBe(3);
+  });
+
+  it('a reroute re-check is 3 MCP calls and reuses the stored dependencies', async () => {
+    const first = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
+    const started = await journey(first.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    const routeId = first.runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
+    const model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
+    first.runtime.agent['deps'].model = model;
+    const res = await journey(first.app, { sessionId: started.body.sessionId, mode: 'demo', demoOutage: true });
+    expect(tools(res)).toEqual(['get_accessibility_disruptions', 'find_alternative_route', 'record_journey_decision']);
+    expect(res.body.status).toBe('REROUTED');
+    // The goal handed to the model carries the stored dependencies, so nothing asks the graph for them again.
+    expect(model.goals[0]).toContain(LIFT_2);
+    expect(res.body.trace.every((t: any) => t.ok)).toBe(true);
+    expect(res.body.trace.map((t: any) => t.step)).toEqual([1, 2, 3]);
+  });
+
+  it('a fresh journey that must reroute (live disruption on a required lift) is 4 calls and is driven by the graph, not by the lift', async () => {
+    const probe = await boot(null);
+    const planned = await probe.runtime.toolbox.planStepFreeJourney({ origin: 'Bond Street', destination: 'Canary Wharf' });
+    if (planned.status !== 'ROUTE_FOUND') throw new Error('expected a route');
+    const required = planned.route.requiredConnectionIds[0];
+    const lift = network.lifts.find((l) => l.liftUniqueId === required)!;
+    expect(required).not.toBe(LIFT_2);
+    liveDisruptions = async () => ({ fetchedAt: '2026-10-17T10:00:00Z', disruptions: [{ liftUniqueId: lift.liftUniqueId, stationId: lift.stationId, friendlyName: lift.friendlyName, message: 'Out of service' }] });
+    try {
+      const { app } = await boot(policyModel({ origin: 'Bond Street', destination: 'Canary Wharf' }));
+      const res = await journey(app, { origin: 'Bond Street', destination: 'Canary Wharf', mode: 'live' });
+      expect(tools(res)).toEqual(['plan_step_free_journey', 'get_accessibility_disruptions', 'find_alternative_route', 'record_journey_decision']);
+      expect(res.body.trace[2].args.unavailableConnectionIds).toEqual([required]);
+      expect(['REROUTED', 'NO_ROUTE']).toContain(res.body.status);
+      if (res.body.status === 'REROUTED') expect(res.body.route.route.stations).not.toEqual(planned.route.stationIds);
+    } finally {
+      liveDisruptions = async () => ({ fetchedAt: '2026-10-17T10:00:00Z', disruptions: [] });
+    }
+  });
+
+  it('an unsupported station ends after one tool call', async () => {
+    const { app } = await boot(policyModel({ origin: 'Narnia', destination: 'London Bridge' }));
+    const res = await journey(app, { origin: 'Narnia', destination: 'London Bridge', mode: 'demo' });
+    expect(res.body.status).toBe('UNKNOWN_STATION');
+    expect(res.body.agent.toolCalls).toBe(1);
+  });
+
+  it('records the decision in FalkorDB with the shorter flow', async () => {
+    const { app } = await boot(policyModel({ origin: 'Victoria', destination: 'London Bridge' }));
+    const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    const decisions = await routing.decisions(res.body.sessionId);
+    expect(decisions.map((d) => d.action)).toEqual(['ROUTE_SELECTED']);
+    expect(decisions[0].routeDuration).toBe(35);
+  });
+
+  it('has no hardcoded station, lift or reroute in the agent code', () => {
+    const dir = new URL('../src/agent/', import.meta.url);
+    for (const file of readdirSync(dir)) {
+      const code = readFileSync(new URL(file, dir), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      expect(code, file).not.toMatch(/westminster|green park|\bGPK\b|\bWSM\b|\bSJP\b|Lift-2/i);
+    }
   });
 });

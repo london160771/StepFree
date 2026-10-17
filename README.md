@@ -37,7 +37,7 @@ Safety rules the host enforces, independent of the model:
 
 - The model never writes Cypher and never computes a route. There is no query tool. Every graph operation is fixed Cypher in `backend/src/graph/routing.ts` with parameters; tool arguments are validated with Zod (types, enums, lengths, array limits, id patterns), then checked against the graph (unknown stations and unknown lift ids are refused).
 - A route can only be selected if `plan_step_free_journey` returned it; a reroute needs `find_alternative_route` plus a disruption, reported by `get_accessibility_disruptions`, on a connection the current route requires; a disruption can only be claimed from tool evidence. Unsupported decisions are rejected back to the model, and repeated attempts end the request.
-- At most 8 MCP tool calls per request (a normal journey uses 6, a reroute 7 or fewer), identical repeated calls are refused, and each model and tool step has a timeout.
+- At most 8 MCP tool calls per request (a normal journey uses 3, a reroute re-check 3, a fresh journey that must reroute 4), identical repeated calls are refused, and each model and tool step has a timeout.
 - The final sentence shown to the traveller is checked against the tool results (minutes, station names, lines, lift names). If anything is unsupported it is replaced by plain copy assembled from the results.
 - The `/mcp` endpoint is internal: it needs a bearer token the backend generates at start-up, is not covered by CORS and is never called by the browser. The Gemini key stays on the backend.
 - If the model, MCP or TfL feed is unavailable, StepFree says so (“Journey agent is temporarily unavailable.”). It never quietly falls back to a non-agent route and presents it as the agent's decision.
@@ -50,9 +50,9 @@ The StepFree MCP server (`backend/src/agent/mcpServer.ts`, `@modelcontextprotoco
 
 | Tool | Reads or writes | What it does |
 |---|---|---|
-| `resolve_station` | read | Matches a name or id to a supported station in FalkorDB (`MATCH (s:Station) WHERE s.key = $key OR $key IN s.aliases OR s.id = $id`). Unknown names return `found: false`. |
-| `plan_step_free_journey` | read | `algo.SPpaths` over `RIDE` and `STEP_FREE_TRANSFER`, weighted by `minutes`, between two station street nodes. Returns a `routeId`, duration, stations, lines and changes. |
-| `inspect_route_dependencies` | read | Reads the `STEP_FREE_TRANSFER` relationships on the route's path and the lifts each uses (`liftsUsed`) or cannot work without (`requiredLifts`). |
+| `resolve_station` | read | Matches a name or id to a supported station in FalkorDB (`MATCH (s:Station) WHERE s.key = $key OR $key IN s.aliases OR s.id = $id`). Unknown names return `found: false`. `plan_step_free_journey` and `find_alternative_route` run the same lookup internally, so the agent only calls this when a name is ambiguous. |
+| `plan_step_free_journey` | read | `algo.SPpaths` over `RIDE` and `STEP_FREE_TRANSFER`, weighted by `minutes`, between two station street nodes. Returns a `routeId`, canonical station names, duration, stations, lines, changes, and the accessibility connections the route depends on (`requiredConnectionIds`), so the agent does not need a second call for them. |
+| `inspect_route_dependencies` | read | Reads the `STEP_FREE_TRANSFER` relationships on the route's path and the lifts each uses (`liftsUsed`) or cannot work without (`requiredLifts`). The planner runs this same query when it returns a route; the tool gives the per-connection detail on request. |
 | `get_accessibility_disruptions` | read | Demo: the controlled Green Park Lift 2 outage once the user triggers it. Live: TfL's lift disruption feed. Each disruption is flagged relevant to the route or not. |
 | `find_alternative_route` | read | Copies the graph with the affected `STEP_FREE_TRANSFER` relationships re-typed `UNAVAILABLE_TRANSFER`, then runs the same shortest-path query. |
 | `record_journey_decision` | write | The one write: creates the `AgentDecision` under the `JourneySession` and links it to stations. |
@@ -64,21 +64,18 @@ There is no tool that runs query text, code, shell, files or HTTP.
 Demo Mode, Victoria → London Bridge (each line is an executed MCP call: tool, arguments, compact result, duration):
 
 ```text
-1  resolve_station {station:"Victoria"}              → Victoria
-2  resolve_station {station:"London Bridge"}         → London Bridge
-3  plan_step_free_journey {origin, destination}      → 35 min via Green Park, Westminster, Waterloo, Southwark
-4  inspect_route_dependencies {routeId}              → 3 connections; requires 940GZZLUGPK-Lift-2, HUBLBG-Lift-2
-5  get_accessibility_disruptions {mode:"demo", …}    → no active disruption
-6  record_journey_decision {action:"ROUTE_SELECTED"} → recorded
+1  plan_step_free_journey {origin:"Victoria", destination:"London Bridge"}
+                                                     → 35 min via Green Park, Westminster, Waterloo, Southwark; requires 940GZZLUGPK-Lift-2, HUBLBG-Lift-2
+2  get_accessibility_disruptions {mode:"demo", relevantConnectionIds:[…]}  → no active disruption
+3  record_journey_decision {action:"ROUTE_SELECTED"} → recorded
 ```
 
-After **Simulate lift outage** (the app only reports the outage; the agent re-checks the same session):
+After **Simulate lift outage** (the app only reports the outage; the agent re-checks the same session, given the stored route's required connections):
 
 ```text
-1  inspect_route_dependencies {routeId}              → requires 940GZZLUGPK-Lift-2
-2  get_accessibility_disruptions {mode:"demo", …}    → Green Park Lift 2 unavailable (relevant)
-3  find_alternative_route {…, unavailableConnectionIds:["940GZZLUGPK-Lift-2"]} → 39 min via St James's Park, Westminster, Waterloo, Southwark
-4  record_journey_decision {action:"REROUTED", reasonCode:"REQUIRED_LIFT_UNAVAILABLE"} → recorded
+1  get_accessibility_disruptions {mode:"demo", relevantConnectionIds:[…]}  → Green Park Lift 2 unavailable (relevant)
+2  find_alternative_route {…, unavailableConnectionIds:["940GZZLUGPK-Lift-2"]} → 39 min via St James's Park, Westminster, Waterloo, Southwark
+3  record_journey_decision {action:"REROUTED", reasonCode:"REQUIRED_LIFT_UNAVAILABLE"} → recorded
 ```
 
 The app shows this under **How StepFree decided** (collapsed by default), in plain words generated from the structured results.

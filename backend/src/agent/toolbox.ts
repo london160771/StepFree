@@ -62,6 +62,14 @@ export const TOOL_NAMES: ToolName[] = [
 
 export interface RouteSummary {
   routeId: string;
+  originId: string;
+  destinationId: string;
+  /** Connections with no step-free alternative: if one is out of service this route cannot be used. */
+  requiredConnectionIds: string[];
+  /** Every lift the route's step-free connections use. */
+  allConnectionIds: string[];
+  /** How many accessibility connections (entrance, interchanges, exit) the route relies on. */
+  dependencyCount: number;
   durationMinutes: number;
   stationIds: string[];
   stations: string[];
@@ -71,8 +79,8 @@ export interface RouteSummary {
 }
 
 export type RouteToolResult =
-  | { status: 'ROUTE_FOUND'; origin: string; destination: string; excludedConnectionIds: string[]; route: RouteSummary }
-  | { status: 'NO_ROUTE'; origin: string; destination: string; excludedConnectionIds: string[]; reason: string }
+  | { status: 'ROUTE_FOUND'; origin: string; destination: string; originId: string; destinationId: string; excludedConnectionIds: string[]; route: RouteSummary }
+  | { status: 'NO_ROUTE'; origin: string; destination: string; originId: string; destinationId: string; excludedConnectionIds: string[]; reason: string }
   | { status: 'UNKNOWN_STATION'; unknown: string[] };
 
 export interface DisruptionItem {
@@ -145,21 +153,7 @@ export class StepFreeToolbox {
     const stored = this.deps.state.routes.get(input.routeId);
     if (!stored) throw new ToolError('NOT_FOUND', 'Unknown routeId. Plan a route first.');
     stored.dependencies ??= await this.deps.routing.routeDependencies(stored.route.graph, stored.route.transferIds);
-    const names = new Map(this.deps.routing.network.stations.map((s) => [s.id, s.name]));
-    const unique = (values: string[]) => [...new Set(values)];
-    return {
-      routeId: stored.id,
-      dependencies: stored.dependencies.map((d) => ({
-        transferId: d.transferId,
-        station: names.get(d.stationId) ?? d.stationId,
-        stationId: d.stationId,
-        kind: d.kind,
-        lifts: d.lifts,
-        requiredConnectionIds: d.requiredLifts,
-      })),
-      requiredConnectionIds: unique(stored.dependencies.flatMap((d) => d.requiredLifts)),
-      allConnectionIds: unique(stored.dependencies.flatMap((d) => d.lifts)),
-    };
+    return describeDependencies(stored, this.deps.routing.network.stations);
   }
 
   async getAccessibilityDisruptions(input: z.infer<typeof disruptionsInput>): Promise<DisruptionToolResult> {
@@ -235,7 +229,7 @@ export class StepFreeToolbox {
     const unknown = [!origin && originText, !destination && destinationText].filter((x): x is string => Boolean(x));
     if (!origin || !destination) return { status: 'UNKNOWN_STATION', unknown };
     const excludedConnectionIds = [...new Set(excluded)].sort();
-    const base = { origin: origin.name, destination: destination.name, excludedConnectionIds };
+    const base = { origin: origin.name, destination: destination.name, originId: origin.id, destinationId: destination.id, excludedConnectionIds };
     if (origin.id === destination.id) return { status: 'NO_ROUTE', ...base, reason: 'Origin and destination are the same station.' };
     const blocked = [origin, destination].find((s) => !s.stepFreeStreetAccess);
     if (blocked) return { status: 'NO_ROUTE', ...base, reason: `${blocked.name} has no step-free street access in TfL data.` };
@@ -250,12 +244,35 @@ export class StepFreeToolbox {
       excludedConnectionIds,
       source,
     };
+    // The route's accessibility dependencies come back with the route, so nobody has to ask the graph for them again.
+    stored.dependencies = await routing.routeDependencies(route.graph, route.transferIds);
     state.saveRoute(stored);
     return { status: 'ROUTE_FOUND', ...base, route: summarise(stored, routing.network.stations) };
   }
 }
 
+/** The route's dependencies in the shape the inspect tool returns and the agent host reuses on a re-check. */
+export function describeDependencies(stored: StoredRoute, stations: { id: string; name: string }[]): DependencyToolResult {
+  const names = new Map(stations.map((s) => [s.id, s.name]));
+  const dependencies = stored.dependencies ?? [];
+  const unique = (values: string[]) => [...new Set(values)];
+  return {
+    routeId: stored.id,
+    dependencies: dependencies.map((d) => ({
+      transferId: d.transferId,
+      station: names.get(d.stationId) ?? d.stationId,
+      stationId: d.stationId,
+      kind: d.kind,
+      lifts: d.lifts,
+      requiredConnectionIds: d.requiredLifts,
+    })),
+    requiredConnectionIds: unique(dependencies.flatMap((d) => d.requiredLifts)),
+    allConnectionIds: unique(dependencies.flatMap((d) => d.lifts)),
+  };
+}
+
 function summarise(stored: StoredRoute, stations: { id: string; name: string }[]): RouteSummary {
+  const deps = describeDependencies(stored, stations);
   const name = (id: string) => stations.find((s) => s.id === id)?.name ?? id;
   const route: RouteResult = stored.route;
   const lines: string[] = [];
@@ -270,6 +287,11 @@ function summarise(stored: StoredRoute, stations: { id: string; name: string }[]
   }
   return {
     routeId: stored.id,
+    originId: stored.origin.id,
+    destinationId: stored.destination.id,
+    requiredConnectionIds: deps.requiredConnectionIds,
+    allConnectionIds: deps.allConnectionIds,
+    dependencyCount: deps.dependencies.length,
     durationMinutes: route.totalMinutes,
     stationIds: route.stations,
     stations: route.stations.map(name),

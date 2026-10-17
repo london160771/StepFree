@@ -40,7 +40,7 @@ export function createStepFreeMcpServer(toolbox: StepFreeToolbox): McpServer {
     {
       description:
         'Check a station name against the stations StepFree supports (London Underground only) by looking it up in the FalkorDB graph. ' +
-        'Returns found=false for anything that is not a supported station. Call this for every station the user names before planning.',
+        'Returns found=false for anything that is not a supported station. Use it only when a name is ambiguous or you are unsure: plan_step_free_journey already resolves both stations itself.',
       inputSchema: resolveStationInput,
     },
     (input) => respond(() => toolbox.resolveStation(input)),
@@ -50,8 +50,9 @@ export function createStepFreeMcpServer(toolbox: StepFreeToolbox): McpServer {
     'plan_step_free_journey',
     {
       description:
-        'Ask FalkorDB for the fastest fully step-free route between two supported stations (weighted shortest path over the step-free graph). ' +
-        'Returns a routeId, the duration, the stations, lines and changes. Pass unavailableConnectionIds only for lifts you already know are out of service.',
+        'Ask FalkorDB for the fastest fully step-free route between two stations (weighted shortest path over the step-free graph). ' +
+        'It resolves both station names against the supported network itself (unsupported names return UNKNOWN_STATION) and returns a routeId, canonical station names, the duration, stations, lines, changes, and the accessibility connections the route depends on (requiredConnectionIds, allConnectionIds). ' +
+        'Pass unavailableConnectionIds only for lifts you already know are out of service.',
       inputSchema: planJourneyInput,
     },
     (input) => respond(() => toolbox.planStepFreeJourney(input)),
@@ -61,8 +62,7 @@ export function createStepFreeMcpServer(toolbox: StepFreeToolbox): McpServer {
     'inspect_route_dependencies',
     {
       description:
-        'List the accessibility connections (lifts and step-free transfers) a route found by plan_step_free_journey or find_alternative_route depends on, read from the graph. ' +
-        'requiredConnectionIds are connections with no step-free alternative: if one of them is out of service the route cannot be used.',
+        'List, step by step, the accessibility connections (lifts and step-free transfers) a route depends on. plan_step_free_journey and find_alternative_route already return the summary (requiredConnectionIds), so call this only when you need the per-connection detail.',
       inputSchema: inspectInput,
     },
     (input) => respond(() => toolbox.inspectRouteDependencies(input)),
