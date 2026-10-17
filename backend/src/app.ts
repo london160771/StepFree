@@ -1,5 +1,8 @@
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { AGENT_UNAVAILABLE_MESSAGE } from './agent/grounding.js';
+import type { AgentRuntime } from './agent/index.js';
+import { mcpHandler } from './agent/mcpServer.js';
 import type { RoutingGraph } from './graph/routing.js';
 import { isInLondon, nearestStation } from './network/geo.js';
 import type { LiftDisruption, LiftDisruptionSource } from './tfl/liftDisruptions.js';
@@ -7,6 +10,7 @@ import type { LiftDisruption, LiftDisruptionSource } from './tfl/liftDisruptions
 export interface AppDeps {
   routing: RoutingGraph;
   liveDisruptions: LiftDisruptionSource;
+  agent?: AgentRuntime;
   corsOrigin?: string;
 }
 
@@ -19,14 +23,18 @@ class HttpError extends Error {
   }
 }
 
-export function createApp({ routing, liveDisruptions, corsOrigin }: AppDeps) {
+export function createApp({ routing, liveDisruptions, agent, corsOrigin }: AppDeps) {
   const app = express();
   const { network } = routing;
   const stationIds = new Set(network.stations.map((s) => s.id));
   const demoLift = network.lifts.find((l) => l.liftUniqueId === network.demoOutage.liftUniqueId)!;
 
-  app.use(cors({ origin: corsOrigin ?? true }));
   app.use(express.json());
+
+  // The MCP endpoint is internal: it is registered before CORS (browsers never call it) and needs the backend's own bearer token.
+  if (agent) app.post('/mcp', mcpHandler(agent.toolbox, agent.mcpToken));
+
+  app.use(cors({ origin: corsOrigin ?? true }));
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true });
@@ -85,6 +93,28 @@ export function createApp({ routing, liveDisruptions, corsOrigin }: AppDeps) {
       if (blocked) return `${blocked.name} has no step-free street access in TfL data.`;
       return 'No step-free route is currently available in the supported network.';
     }
+  });
+
+  /**
+   * The journey agent. The first call starts a journey session; a call with the same sessionId re-checks it (for
+   * example after the Demo Mode outage is triggered or cleared). The agent, not this handler, decides what to do.
+   */
+  app.post('/api/agent/journey', async (req, res) => {
+    const { origin, destination, mode, sessionId, demoOutage } = req.body ?? {};
+    if (mode !== 'demo' && mode !== 'live') throw new HttpError(400, 'Mode must be demo or live.');
+    if (sessionId !== undefined && (typeof sessionId !== 'string' || !/^[A-Za-z0-9_-]{8,64}$/.test(sessionId))) throw new HttpError(400, 'Invalid session.');
+    if (demoOutage !== undefined && typeof demoOutage !== 'boolean') throw new HttpError(400, 'demoOutage must be true or false.');
+    const resuming = typeof sessionId === 'string' && Boolean(agent?.state.sessions.has(sessionId));
+    if (!resuming && [origin, destination].some((v) => typeof v !== 'string' || v.trim() === '' || v.length > 80)) {
+      throw new HttpError(400, 'Choose two stations.');
+    }
+    if (!agent) {
+      res.status(503).json({ status: 'AGENT_UNAVAILABLE', message: AGENT_UNAVAILABLE_MESSAGE, trace: [] });
+      return;
+    }
+    const result = await agent.agent.run({ origin, destination, mode, sessionId, demoOutage });
+    const unavailable = result.status === 'AGENT_UNAVAILABLE' || result.status === 'TFL_UNAVAILABLE';
+    res.status(unavailable ? 503 : result.status === 'AGENT_FAILED' ? 502 : 200).json(result);
   });
 
   /** Live Mode entry: London check, nearest supported station and current lift disruptions. */

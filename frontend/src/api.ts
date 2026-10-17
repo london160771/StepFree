@@ -95,13 +95,54 @@ export type LiveStatus =
       fetchedAt: string;
     };
 
+export type AgentStatus =
+  | 'ROUTE_SELECTED'
+  | 'ROUTE_RETAINED'
+  | 'REROUTED'
+  | 'NO_ROUTE'
+  | 'UNKNOWN_STATION'
+  | 'AGENT_UNAVAILABLE'
+  | 'TFL_UNAVAILABLE'
+  | 'AGENT_FAILED';
+
+/** One MCP tool call the journey agent made: what it asked, a compact result, and how long it took. */
+export interface TraceEntry {
+  step: number;
+  tool: string;
+  args: Record<string, unknown>;
+  ok: boolean;
+  result: unknown;
+  summary: string;
+  durationMs: number;
+}
+
+export interface AgentResponse {
+  sessionId: string;
+  status: AgentStatus;
+  message: string;
+  /** The journey in the same shape the map and journey panel already use. */
+  route: RouteResponse | null;
+  dependencies: { station: string; kind: string; lifts: string[]; requiredConnectionIds: string[] }[];
+  disruptions: { connectionId: string; station: string; name: string; message: string }[];
+  trace: TraceEntry[];
+}
+
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || 'http://localhost:4000';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+class AgentBodyError extends Error {
+  readonly body: AgentResponse;
+  constructor(body: AgentResponse) {
+    super(body.message);
+    this.body = body;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit & { keepErrorBody?: boolean }): Promise<T> {
   let response: Response;
+  const { keepErrorBody, ...fetchInit } = init ?? {};
   try {
     response = await fetch(`${API_URL}${path}`, {
-      ...init,
+      ...fetchInit,
       headers: { 'Content-Type': 'application/json', ...init?.headers },
     });
   } catch {
@@ -112,14 +153,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
   const body = await response.json().catch(() => ({}));
+  if (!response.ok && keepErrorBody && typeof body.status === 'string') throw new AgentBodyError(body as AgentResponse);
   if (!response.ok) throw new Error(body.error ?? 'Something went wrong while finding a route.');
   return body as T;
 }
 
 export const api = {
   network: () => request<NetworkResponse>('/api/network'),
-  route: (body: { from: string; to: string; mode: Mode; outage?: boolean }) =>
-    request<RouteResponse>('/api/route', { method: 'POST', body: JSON.stringify(body) }),
+  /**
+   * Ask the journey agent. The first call starts a journey; a call with the same sessionId makes the agent re-check it
+   * (for example once the Demo Mode outage is triggered). The agent decides; this app only reports what changed.
+   */
+  agentJourney: async (body: { origin?: string; destination?: string; mode: Mode; sessionId?: string; demoOutage?: boolean }): Promise<AgentResponse> => {
+    try {
+      return await request<AgentResponse>('/api/agent/journey', { method: 'POST', body: JSON.stringify(body), keepErrorBody: true });
+    } catch (error) {
+      if (error instanceof AgentBodyError) return error.body;
+      throw error;
+    }
+  },
   liveStatus: (lat: number, lon: number) =>
     request<LiveStatus>('/api/live/status', { method: 'POST', body: JSON.stringify({ lat, lon }) }),
 };

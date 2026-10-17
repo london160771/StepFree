@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { FalkorDB } from 'falkordb';
 import { buildAreaGraph, unavailableTransferIds, type AreaGraph } from '../network/stepfree.js';
+import { stationAliases, stationKey } from '../network/names.js';
 import type { LineId, Network } from '../network/types.js';
 
 export const BASE_GRAPH = 'stepfree';
@@ -45,7 +46,35 @@ export interface RouteResult {
   /** Ordered station ids along the route, including pass-through stations. */
   stations: string[];
   nodeIds: string[];
+  /** Ids of the STEP_FREE_TRANSFER relationships on the path (entrances, interchanges, exits). */
+  transferIds: string[];
   legs: Leg[];
+}
+
+/** One accessibility connection a route depends on, read back from the graph. */
+export interface RouteDependency {
+  transferId: string;
+  stationId: string;
+  kind: 'entrance' | 'interchange';
+  /** Every lift this step-free connection uses. */
+  lifts: string[];
+  /** Lifts with no step-free alternative: if one is out, the connection is unusable. */
+  requiredLifts: string[];
+}
+
+export type DecisionAction = 'ROUTE_SELECTED' | 'ROUTE_RETAINED' | 'REROUTED' | 'NO_ROUTE';
+
+export interface DecisionRecord {
+  sessionId: string;
+  mode: 'demo' | 'live';
+  originId: string;
+  destinationId: string;
+  action: DecisionAction;
+  reasonCode: string;
+  routeId: string | null;
+  routeDuration: number | null;
+  affectedConnectionIds: string[];
+  affectedStationIds: string[];
 }
 
 export interface GraphEdge {
@@ -105,8 +134,8 @@ export class RoutingGraph {
     const graph = this.db.selectGraph(this.prefix);
     await graph.query(
       `UNWIND $stations AS s
-       CREATE (:Station {id: s.id, name: s.name, naptanId: s.naptanId, lat: s.lat, lon: s.lon, stepFreeStreetAccess: s.stepFreeStreetAccess})`,
-      { params: { stations: stations.map((s) => ({ ...s })) } },
+       CREATE (:Station {id: s.id, name: s.name, key: s.key, aliases: s.aliases, naptanId: s.naptanId, lat: s.lat, lon: s.lon, stepFreeStreetAccess: s.stepFreeStreetAccess})`,
+      { params: { stations: stations.map((s) => ({ ...s, key: stationKey(s.name), aliases: stationAliases(s) })) } },
     );
     await graph.query(
       `UNWIND $nodes AS n
@@ -201,9 +230,85 @@ export class RoutingGraph {
       graph: graphName,
       totalMinutes: row.pathWeight,
       nodeIds: row.nodes.map((n) => n.id),
+      transferIds: row.edges.filter((e) => e.type === 'STEP_FREE_TRANSFER' && e.id).map((e) => e.id!),
       stations: dedupe(row.nodes.map((n) => n.stationId)),
       legs: toLegs(row.nodes, row.edges),
     };
+  }
+
+  /** Resolve free text to a supported station. Only an exact normalised name, alias or station id matches. */
+  async resolveStation(text: string): Promise<{ id: string; name: string; stepFreeStreetAccess: boolean } | null> {
+    const key = stationKey(text);
+    if (!key) return null;
+    const reply = await this.db.selectGraph(this.prefix).roQuery<{ id: string; name: string; stepFreeStreetAccess: boolean }>(
+      `MATCH (s:Station)
+       WHERE s.key = $key OR $key IN s.aliases OR s.id = $id
+       RETURN s.id AS id, s.name AS name, s.stepFreeStreetAccess AS stepFreeStreetAccess
+       LIMIT 2`,
+      { params: { key, id: text.trim().toUpperCase() } },
+    );
+    return reply.data?.length === 1 ? reply.data[0] : null;
+  }
+
+  /** The step-free connections on a path, with the lifts each one needs, read from the graph's own relationships. */
+  async routeDependencies(graphName: string, transferIds: string[]): Promise<RouteDependency[]> {
+    if (transferIds.length === 0) return [];
+    const reply = await this.db.selectGraph(graphName).roQuery<RouteDependency>(
+      `MATCH (a:Access)-[t:STEP_FREE_TRANSFER]->(b:Access)
+       WHERE t.id IN $ids
+       RETURN t.id AS transferId, a.stationId AS stationId, t.kind AS kind, t.liftsUsed AS lifts, t.requiredLifts AS requiredLifts`,
+      { params: { ids: transferIds } },
+    );
+    const byId = new Map((reply.data ?? []).map((d) => [d.transferId, d]));
+    return transferIds.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
+  }
+
+  /** Write one agent decision to the journey session in the base graph. Returns the decision id. */
+  async recordDecision(record: DecisionRecord): Promise<string> {
+    const decisionId = `D-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date().toISOString();
+    const graph = this.db.selectGraph(this.prefix);
+    await graph.query(
+      `MATCH (o:Station {id: $originId}), (d:Station {id: $destinationId})
+       MERGE (s:JourneySession {id: $sessionId})
+         ON CREATE SET s.createdAt = $now
+       SET s.updatedAt = $now, s.mode = $mode, s.originId = $originId, s.destinationId = $destinationId
+       MERGE (s)-[:FROM]->(o)
+       MERGE (s)-[:TO]->(d)
+       CREATE (s)-[:HAS_DECISION]->(x:AgentDecision {
+         id: $decisionId, action: $action, reasonCode: $reasonCode, createdAt: $now,
+         routeId: $routeId, routeDuration: $routeDuration, affectedConnectionIds: $affectedConnectionIds
+       })`,
+      { params: { ...record, decisionId, now } },
+    );
+    if (record.affectedStationIds.length > 0) {
+      await graph.query(
+        `MATCH (x:AgentDecision {id: $decisionId})
+         MATCH (st:Station) WHERE st.id IN $stationIds
+         CREATE (x)-[:AFFECTED_BY]->(st)`,
+        { params: { decisionId, stationIds: record.affectedStationIds } },
+      );
+    }
+    return decisionId;
+  }
+
+  /** The decisions recorded for a journey session, oldest first. */
+  async decisions(sessionId: string): Promise<{ id: string; action: DecisionAction; reasonCode: string; routeDuration: number | null; affectedStationIds: string[] }[]> {
+    const reply = await this.db.selectGraph(this.prefix).roQuery<{
+      id: string;
+      action: DecisionAction;
+      reasonCode: string;
+      routeDuration: number | null;
+      affectedStationIds: string[];
+      at: string;
+    }>(
+      `MATCH (:JourneySession {id: $sessionId})-[:HAS_DECISION]->(x:AgentDecision)
+       OPTIONAL MATCH (x)-[:AFFECTED_BY]->(st:Station)
+       RETURN x.id AS id, x.action AS action, x.reasonCode AS reasonCode, x.routeDuration AS routeDuration, collect(st.id) AS affectedStationIds, x.createdAt AS at
+       ORDER BY at`,
+      { params: { sessionId } },
+    );
+    return (reply.data ?? []).map(({ id, action, reasonCode, routeDuration, affectedStationIds }) => ({ id, action, reasonCode, routeDuration, affectedStationIds }));
   }
 
   /** Every node relationship in the given graph, read from FalkorDB for the map. */

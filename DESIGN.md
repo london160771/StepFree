@@ -50,6 +50,10 @@ The wheelchair-user figure is a small illustrative map character, not a user pro
 
 Show the safety note exactly as written: **based on currently available TfL accessibility data.**
 
+### How StepFree decided
+
+Below the route result, a compact, collapsed-by-default disclosure titled **How StepFree decided** lists the agent's actions in plain words (for example “Asked FalkorDB for a step-free route: 35 min via …”, “Detected Green Park Lift 2 unavailable”), each with the tool name and duration in small type. Lines come from structured tool results returned by the backend, never from model text or reasoning. It is a native `<details>` disclosure (keyboard and screen-reader friendly), not a chatbot, floating assistant or AI branding. Above the route card, one short sentence states the agent's result in plain language (for example “Your step-free route is ready. It takes about 35 minutes.”). After the outage, the banner carries the agent's explanation of what changed.
+
 ## Demo Mode flow
 
 1. The user selects **Demo**.
@@ -57,7 +61,7 @@ Show the safety note exactly as written: **based on currently available TfL acce
 3. The route is drawn over the station graph. Keep the route and transfer links visually distinct.
 4. Show a prominent **Simulate lift outage** action.
 5. On activation, label the event **Lift unavailable at Green Park**. Pulse the affected station red and identify the affected lift/pathway with its lift icon.
-6. Fade the old route and show **Finding another step-free route…**.
+6. The app reports the outage to the journey agent, fades the old route and shows **Finding another step-free route…** while the agent re-checks the journey.
 7. Draw the route returned by FalkorDB: use the District line from Victoria to Westminster, passing St James's Park without alighting, then the Jubilee line to London Bridge via Waterloo and Southwark.
 8. Present the updated route and travel time as a calm success state.
 

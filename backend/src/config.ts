@@ -13,6 +13,8 @@ if (existsSync(envPath)) {
 export const config = {
   port: Number(process.env.PORT ?? 4000),
   falkordbUrl: process.env.FALKORDB_URL || 'redis://127.0.0.1:6379',
+  // Read only by the backend's agent host. Never sent to the browser.
+  geminiApiKey: process.env.GEMINI_API_KEY || undefined,
   tflAppKey: process.env.TFL_APP_KEY || undefined,
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
 };

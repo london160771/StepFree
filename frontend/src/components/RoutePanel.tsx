@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import type { LiftDisruption, Route } from '../api';
 import type { useStepFree } from '../useStepFree';
+import { DecisionTrace } from './DecisionTrace';
 import { describeLeg, SAFETY_NOTE } from './describe';
 import { CheckGlyph, InfoGlyph, LiftGlyph, LocationGlyph } from './icons';
 
@@ -170,7 +171,7 @@ function Planner({ store }: { store: Store }) {
 }
 
 function PhaseContent({ store, name }: { store: Store; name: (id: string) => string }) {
-  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateOutage, resetDemo, noRouteReason } = store;
+  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateOutage, resetDemo, noRouteReason, agentMessage, trace } = store;
   const outageLift = network!.demoOutage;
 
   if (phase === 'outage' || phase === 'recalculating') {
@@ -198,6 +199,11 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
             </button>
           </div>
         )}
+        {trace.length > 0 && (
+          <div className="mt-4">
+            <DecisionTrace trace={trace} />
+          </div>
+        )}
       </Notice>
     );
   }
@@ -207,10 +213,12 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
     return (
       <div className="space-y-4">
         {phase === 'rerouted' && (
-          <OutageBanner compact stationName={name(outageLift.stationId)} detail={unchanged ? 'This route doesn’t use that lift, so it stays the same.' : 'Here is another step-free route.'} />
+          <OutageBanner compact stationName={name(outageLift.stationId)} detail={unchanged ? 'This route doesn’t use that lift, so it stays the same.' : (agentMessage ?? 'Here is another step-free route.')} />
         )}
         {mode === 'live' && unavailableLifts.length > 0 && <LiveDisruptions lifts={unavailableLifts} name={name} />}
+        {phase === 'route' && agentMessage && <p className="text-base font-medium text-slate-800">{agentMessage}</p>}
         <RouteResult route={route} name={name} previousMinutes={phase === 'rerouted' ? fadingRoute?.totalMinutes : undefined} />
+        <DecisionTrace trace={trace} />
         {mode === 'demo' && phase === 'route' && (
           <button type="button" className="btn-outage" onClick={simulateOutage}>
             <LiftGlyph unavailable className="h-5 w-5" />

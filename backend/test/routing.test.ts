@@ -148,3 +148,35 @@ describe('Partial access and no-route handling', () => {
     expect(expectRoute(await routing.route('BND', 'CWR', scenario.name)).stations.at(-1)).toBe('CWR');
   });
 });
+
+describe('Journey session and decision memory', () => {
+  it('stores a JourneySession with its AgentDecision, and routing never sees either label', async () => {
+    const before = expectRoute(await routing.route('VIC', 'LNB', routing.baseGraph));
+    const id = await routing.recordDecision({
+      sessionId: 'session-graph-test',
+      mode: 'demo',
+      originId: 'VIC',
+      destinationId: 'LNB',
+      action: 'REROUTED',
+      reasonCode: 'REQUIRED_LIFT_UNAVAILABLE',
+      routeId: 'abcdefabcdef',
+      routeDuration: 39,
+      affectedConnectionIds: [network.demoOutage.liftUniqueId],
+      affectedStationIds: ['GPK'],
+    });
+    expect(id).toMatch(/^D-/);
+    const decisions = await routing.decisions('session-graph-test');
+    expect(decisions).toEqual([{ id, action: 'REROUTED', reasonCode: 'REQUIRED_LIFT_UNAVAILABLE', routeDuration: 39, affectedStationIds: ['GPK'] }]);
+    const edges = await routing.edges(routing.baseGraph);
+    expect(edges.every((e) => e.type === 'RIDE' || e.type === 'STEP_FREE_TRANSFER')).toBe(true);
+    expect(expectRoute(await routing.route('VIC', 'LNB', routing.baseGraph))).toEqual(before);
+  });
+
+  it('resolves station names only against the graph', async () => {
+    expect(await routing.resolveStation('Victoria Station')).toMatchObject({ id: 'VIC' });
+    expect(await routing.resolveStation("King's Cross")).toMatchObject({ id: 'KGX' });
+    expect(await routing.resolveStation('Kings Cross St Pancras')).toMatchObject({ id: 'KGX' });
+    expect(await routing.resolveStation('Atlantis')).toBeNull();
+    expect(await routing.resolveStation('Green')).toBeNull();
+  });
+});

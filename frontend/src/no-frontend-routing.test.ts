@@ -24,9 +24,12 @@ describe('FalkorDB is the only router', () => {
     }
   });
 
-  it('gets every route from the API', () => {
+  it('gets every route from the journey agent, and never decides to reroute itself', () => {
     const hook = readFileSync(join(decodeURIComponent(root), 'useStepFree.ts'), 'utf8');
-    expect(hook).toContain('api.route(');
+    expect(hook).toContain('api.agentJourney(');
+    expect(hook).not.toContain('api.route(');
+    // The app reports the outage (demoOutage) and shows what the agent decided.
+    expect(hook).toContain('demoOutage: true');
     expect(hook).not.toMatch(/route:\s*\{[^}]*stations:\s*\[/);
   });
 });

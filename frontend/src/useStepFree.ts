@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type LiftDisruption, type Mode, type NetworkResponse, type Route } from './api';
+import { api, type AgentResponse, type LiftDisruption, type Mode, type NetworkResponse, type Route, type TraceEntry } from './api';
 import { placeOnMap, schematicPositions, type Point } from './map/layout';
 
 export type Phase = 'idle' | 'finding' | 'route' | 'outage' | 'recalculating' | 'rerouted' | 'noroute';
@@ -38,6 +38,9 @@ export function useStepFree() {
   const [noRouteReason, setNoRouteReason] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [journeyKey, setJourneyKey] = useState('0');
+  const [agentMessage, setAgentMessage] = useState<string | null>(null);
+  const [trace, setTrace] = useState<TraceEntry[]>([]);
+  const sessionId = useRef<string | null>(null);
   const run = useRef(0);
 
   useEffect(() => {
@@ -61,6 +64,9 @@ export function useStepFree() {
     setUnavailableLifts([]);
     setNoRouteReason(null);
     setError(null);
+    setAgentMessage(null);
+    setTrace([]);
+    sessionId.current = null;
   }, []);
 
   const setFrom = (id: string) => {
@@ -92,14 +98,24 @@ export function useStepFree() {
     setOutageStationIds([]);
     setPhase('finding');
     try {
-      const res = await api.route({ from, to, mode });
+      const stationName = (stationId: string) => network?.stations.find((st) => st.id === stationId)?.name ?? stationId;
+      const res = await api.agentJourney({ origin: stationName(from), destination: stationName(to), mode });
       if (id !== run.current) return;
-      setUnavailableLifts(res.unavailable.lifts);
-      setOutageStationIds(mode === 'live' ? affectedStations(res.unavailable.lifts, res.unavailable.transferIds) : []);
-      setRoute(res.route);
-      setNoRouteReason(res.noRouteReason);
+      if (!showable(res)) {
+        setError(res.message);
+        setPhase('idle');
+        return;
+      }
+      const journey = res.route!;
+      sessionId.current = res.sessionId;
+      setUnavailableLifts(journey.unavailable.lifts);
+      setOutageStationIds(mode === 'live' ? affectedStations(journey.unavailable.lifts, journey.unavailable.transferIds) : []);
+      setRoute(journey.route);
+      setNoRouteReason(journey.noRouteReason);
+      setAgentMessage(res.message);
+      setTrace(res.trace);
       setJourneyKey(`${Date.now()}`);
-      setPhase(res.route ? 'route' : 'noroute');
+      setPhase(journey.route ? 'route' : 'noroute');
     } catch (e) {
       if (id !== run.current) return;
       setError((e as Error).message);
@@ -119,17 +135,31 @@ export function useStepFree() {
     setRoute(null);
     setPhase('recalculating');
     try {
-      const [res] = await Promise.all([api.route({ from, to, mode: 'demo', outage: true }), wait(RECALC_MIN_MS)]);
+      // The app only reports that the outage happened. The agent re-checks the journey and decides what to do.
+      const [res] = await Promise.all([api.agentJourney({ sessionId: sessionId.current ?? undefined, mode: 'demo', demoOutage: true }), wait(RECALC_MIN_MS)]);
       if (id !== run.current) return;
-      setUnavailableLifts(res.unavailable.lifts);
-      setRoute(res.route);
-      setNoRouteReason(res.noRouteReason);
+      if (!showable(res)) {
+        setRoute(route);
+        setFadingRoute(null);
+        setError(res.message);
+        setPhase('route');
+        return;
+      }
+      const journey = res.route!;
+      sessionId.current = res.sessionId;
+      setUnavailableLifts(journey.unavailable.lifts);
+      setRoute(journey.route);
+      setNoRouteReason(journey.noRouteReason);
+      setAgentMessage(res.message);
+      setTrace(res.trace);
       setJourneyKey(`${Date.now()}`);
-      setPhase(res.route ? 'rerouted' : 'noroute');
+      setPhase(journey.route ? 'rerouted' : 'noroute');
     } catch (e) {
       if (id !== run.current) return;
+      setRoute(route);
+      setFadingRoute(null);
       setError((e as Error).message);
-      setPhase('idle');
+      setPhase('route');
     }
   };
 
@@ -199,12 +229,19 @@ export function useStepFree() {
     outageStationIds,
     unavailableLifts,
     noRouteReason,
+    agentMessage,
+    trace,
     error,
     journeyKey,
     findRoute,
     simulateOutage,
     resetDemo,
   };
+}
+
+/** The agent produced a journey (a route, or an honest no-route) that the app can show. */
+function showable(res: AgentResponse): boolean {
+  return res.route !== null && ['ROUTE_SELECTED', 'ROUTE_RETAINED', 'REROUTED', 'NO_ROUTE'].includes(res.status);
 }
 
 /** Stations where a disrupted lift actually makes a step-free connection unavailable. */

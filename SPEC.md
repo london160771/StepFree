@@ -1,5 +1,9 @@
 # StepFree Graph Hacks — MVP specification
 
+## Hackathon track and agent
+
+StepFree enters **Track 01 — Agents That Act on Connected Data**. It is a journey agent: Gemini (`gemini-3.8-flash`) chooses among a fixed catalogue of MCP tools; the MCP server runs human-written, parameterised Cypher against FalkorDB and reads TfL lift disruptions; the agent host enforces what the evidence allows and returns a grounded decision with a visible action trace. FalkorDB remains the routing brain. The model never writes Cypher, never computes a route and never sees raw location.
+
 ## Product
 
 StepFree demonstrates how an accessible transit route can change when a lift or step-free connection becomes unavailable. It uses a small, real TfL London network subset and FalkorDB to calculate the valid route and the reroute.
@@ -25,6 +29,8 @@ This is a 17-station proof of concept, not a London-wide journey planner.
 8. **FalkorDB proof:** make the graph and pathfinding legible in the demo through the supported station/connection map and the visible route change when the Green Park connection is disabled. The proof is part of the map experience; it does not require a separate dashboard.
 9. **About StepFree:** provide a short project story centered on wheelchair users, elderly people, injured people, and parents with strollers. Emphasize independence, confidence, and practical social impact, and credit FalkorDB and TfL.
 
+10. **Journey agent (Track 01):** both modes plan and re-check journeys through `POST /api/agent/journey`: the agent selects MCP tools (`resolve_station`, `plan_step_free_journey`, `inspect_route_dependencies`, `get_accessibility_disruptions`, `find_alternative_route`, `record_journey_decision`) and decides `ROUTE_SELECTED`, `ROUTE_RETAINED`, `REROUTED` or `NO_ROUTE`. At most 8 tool calls per request. The one write tool records a `JourneySession` / `AgentDecision` in FalkorDB. The frontend reports state (for example that the demo outage was triggered) and never decides to reroute. If the model is unavailable the app says so; it does not silently bypass the agent. The UI shows a collapsed **How StepFree decided** disclosure built from the structured tool trace. Unsupported stations return “That station isn't in StepFree's current supported network.”
+
 ### Explicitly out of scope
 
 - User accounts, profiles, and saved trips.
@@ -32,6 +38,8 @@ This is a 17-station proof of concept, not a London-wide journey planner.
 - Full-London routing or a graph beyond the 17-station subset.
 - Additional accessibility preferences or user-specific route settings.
 - Dashboards, sidebars, or pages beyond Map / Home, PWA Install Guide, and About StepFree.
+- A chat interface, a general-purpose assistant, or any agent tool that accepts query text, code, files or arbitrary HTTP.
+- Disruption features beyond lift outages (station, line or entrance closures, planned works) and the follow-on agent features not named here.
 - Any extra feature, data provider, or service not named in this specification.
 
 ## Route and graph behavior
@@ -105,6 +113,7 @@ Use only this agreed stack:
 | PWA | `vite-plugin-pwa` |
 | Backend | Node.js, Express, TypeScript |
 | Graph and routing | FalkorDB with the official FalkorDB Node client |
+| Agent | Google Gemini (`gemini-3.8-flash`) through `@google/genai`, behind an `AgentModel` interface; MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, `/client`, `/node`) over Streamable HTTP; Zod for tool arguments |
 | Transit data | TfL APIs and official topology data |
 | Tests | Vitest and Supertest |
 | Deployment | Frontend on Vercel; backend on Render; FalkorDB Cloud if available, otherwise self-hosted/Docker-compatible FalkorDB |
@@ -121,4 +130,5 @@ Milestones are deliverables and acceptance evidence, not time estimates.
 | 3 — Live Mode and location | Live Mode requests location only on entry; on permission, it places the animated user figure and maps the user to the nearest supported station within the 17-station graph; on denial, Live Mode does not start and Demo Mode remains available. It uses real TfL lift disruption data, requires internet access for current disruption data, and communicates that Live Mode is London-only. |
 | 4 — Animated interface | The phone-first map, route states, lift states, user figure, subtle train movement, and outage transition match `DESIGN.md`; desktop adapts the same map as a larger transit view. |
 | 5 — PWA and guide | The frontend is installable as a PWA, the iPhone/Android Install Guide page is complete, the app shell can be available offline, and Live Mode clearly requires internet for current TfL disruption data. |
+| Agent alignment | Gemini → MCP → FalkorDB: six fixed tools, bounded loop, evidence guards, grounded copy, journey decision memory in FalkorDB, and the **How StepFree decided** trace; Demo (35 → 39 min), Lift 2 outage and unknown-station scenarios pass through the agent. |
 | 6 — Verification and demo readiness | Vitest and Supertest cover the core routing/API behavior; the safety note, three pages, credits, and route demo are checked; the frontend/backend/FalkorDB deployment targets are prepared for the demonstration. |
