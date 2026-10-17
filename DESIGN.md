@@ -8,7 +8,7 @@ Use soft isometric building shapes as quiet context, simple roads/transit lines,
 
 The visual language is:
 
-- **Map:** a calm 3D map of real central London (MapLibre GL JS, OpenFreeMap/OpenStreetMap tiles, extruded buildings in stone and brick tones) with the seven-station network drawn on top at real coordinates. A schematic SVG map is the offline/no-WebGL fallback.
+- **Map:** a calm 3D map of real central London (MapLibre GL JS, OpenFreeMap/OpenStreetMap tiles, extruded buildings in stone and brick tones) with the 17-station network drawn on top at real coordinates. A schematic SVG map is the offline/no-WebGL fallback.
 - **Motion:** Framer Motion and the map camera for the intro hand-off and route changes, the station outage pulse, the user figure's small journey animation, and subtle train movement. Keep train motion restrained and non-distracting.
 - **Route:** a high-contrast line drawn over the network with clear origin/destination and transfer points.
 - **Accessibility cues:** lift icons and explicit text labels; do not communicate an outage by color alone.
@@ -69,7 +69,7 @@ When the user selects **Live**, introduce the location request with:
 
 > Use your location to find step-free routes around you.
 
-Provide an **Allow Location** action. Request browser location only in this mode; Demo Mode works without permission. If permission is granted, use the browser location to place the animated user figure and map the user to the nearest supported station within the seven-station graph for routing. If permission is denied, Live Mode must not start and Demo Mode remains available. Use Live Mode with TfL lift disruption data and the seven-station graph. Do not present the MVP as supporting routes across all of London.
+Provide an **Allow Location** action. Request browser location only in this mode; Demo Mode works without permission. If permission is granted, use the browser location to place the animated user figure and map the user to the nearest supported station within the 17-station graph for routing. If permission is denied, Live Mode must not start and Demo Mode remains available. Use Live Mode with TfL lift disruption data and the 17-station graph. Do not present the MVP as supporting routes across all of London.
 
 When the location is outside London, show:
 

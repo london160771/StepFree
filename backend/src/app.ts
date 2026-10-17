@@ -36,7 +36,10 @@ export function createApp({ routing, liveDisruptions, corsOrigin }: AppDeps) {
   app.get('/api/network', async (_req, res) => {
     res.json({
       stations: network.stations.map(({ id, name, lat, lon, stepFreeStreetAccess }) => ({ id, name, lat, lon, stepFreeStreetAccess })),
-      edges: await routing.edges(routing.baseGraph),
+      // The map only needs the ride connections (stored in FalkorDB) to draw the network; transfers stay on the server.
+      edges: (await routing.edges(routing.baseGraph))
+        .filter((e) => e.type === 'RIDE')
+        .map(({ type, from, to, line, lines, minutes }) => ({ type, from, to, line, lines, minutes })),
       demoOutage: {
         liftUniqueId: network.demoOutage.liftUniqueId,
         stationId: network.demoOutage.stationId,
@@ -80,7 +83,7 @@ export function createApp({ routing, liveDisruptions, corsOrigin }: AppDeps) {
     function noRouteReason(fromId: string, toId: string) {
       const blocked = [fromId, toId].map((id) => network.stations.find((s) => s.id === id)!).find((s) => !s.stepFreeStreetAccess);
       if (blocked) return `${blocked.name} has no step-free street access in TfL data.`;
-      return 'No step-free route is available between these stations right now.';
+      return 'No step-free route is currently available in the supported network.';
     }
   });
 

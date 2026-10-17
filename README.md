@@ -10,7 +10,7 @@ For wheelchair users, elderly people, injured people and parents with strollers,
 - **FalkorDB understands the connected transit graph.** Each station has street and line-specific nodes, linked by `RIDE` relationships (with TfL timetable run times) and `STEP_FREE_TRANSFER` relationships (lift and level paths taken from TfL topology).
 - **FalkorDB finds the new usable step-free route.** Routes come from FalkorDB’s weighted shortest path (`algo.SPpaths`) over `RIDE` and `STEP_FREE_TRANSFER`, weighted by travel time. When a lift is unavailable, the step-free connections that depend on it become `UNAVAILABLE_TRANSFER`, and FalkorDB returns the next valid route.
 
-This is a proof of concept covering seven central London stations: Victoria, Green Park, St James’s Park, Westminster, Waterloo, Southwark and London Bridge. It is not a London-wide journey planner. Routes are **based on currently available TfL accessibility data.**
+This is a proof of concept covering 17 London Underground stations: Victoria, Green Park, St James’s Park, Westminster, Waterloo, Southwark, London Bridge, Bond Street, Tottenham Court Road, King’s Cross St Pancras, Paddington, Liverpool Street, Farringdon, Moorgate, Canary Wharf, Tower Hill and Canada Water. Only Underground lines are modelled; platforms without step-free access (for example Liverpool Street’s Central line) are left out of routing, and a station with no step-free access (St James’s Park) is pass-through only. It is not a London-wide journey planner. Routes are **based on currently available TfL accessibility data.**
 
 ### Demo Mode
 
@@ -31,7 +31,7 @@ StepFree is an installable PWA. The **Install** page has short iPhone (Safari) a
 ```text
 frontend/   React + Vite + TypeScript + Tailwind CSS + Framer Motion, MapLibre GL 3D map, PWA via vite-plugin-pwa
 backend/    Node.js + Express + TypeScript API, FalkorDB routing, TfL integration
-  data/network.json         seven-station graph built from TfL data (committed)
+  data/network.json         17-station graph built from TfL data (committed)
   scripts/build-network.ts  rebuilds network.json from TfL topology, timetable and StopPoint APIs
 ```
 

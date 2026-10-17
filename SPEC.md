@@ -9,16 +9,16 @@ The MVP has two modes:
 - **Demo Mode** presents a controlled Green Park lift/pathway outage so the route change can be demonstrated reliably.
 - **Live Mode** uses the user's location and real TfL lift disruption data. It is available in London only and requires location permission.
 
-This is a seven-station proof of concept, not a London-wide journey planner.
+This is a 17-station proof of concept, not a London-wide journey planner.
 
 ## Locked MVP scope
 
 ### Required capabilities
 
-1. **Seven-station graph:** support Victoria, Green Park, St James's Park, Westminster, Waterloo, Southwark, and London Bridge. Model line-specific station/platform nodes where needed to represent travel and interchange correctly. St James's Park is a District line pass-through on the fallback journey; the passenger remains on the train and does not transfer or alight there.
+1. **17-station graph:** support Victoria, Green Park, St James's Park, Westminster, Waterloo, Southwark, London Bridge, Bond Street, Tottenham Court Road, King's Cross St Pancras, Paddington, Liverpool Street, Farringdon, Moorgate, Canary Wharf, Tower Hill and Canada Water (London Underground only). Platforms or directions without step-free access are not boardable; RIDE edges between supported stations aggregate unsupported intermediate stops, which are not selectable. Model line-specific station/platform nodes where needed to represent travel and interchange correctly. St James's Park is a District line pass-through on the fallback journey; the passenger remains on the train and does not transfer or alight there.
 2. **Step-free routing:** FalkorDB computes the valid step-free route using the graph's travel-time weights. The same graph engine computes the reroute after a connection is unavailable.
 3. **Demo Mode:** show the baseline Victoria-to-London Bridge route via Green Park, trigger the controlled Green Park lift/pathway outage with a clear **Simulate lift outage** action, then show the alternate route via the District line to Westminster and the Jubilee line onward to London Bridge. The District line journey passes St James's Park without requiring it to be step-free.
-4. **Live Mode:** request browser location permission only after the user chooses Live Mode. If permission is granted, use the browser location to place the animated user figure and map the user to the nearest supported station within the seven-station graph for routing. If permission is denied, Live Mode must not start and Demo Mode remains available. Use real TfL lift disruption data and keep route calculation within the seven-station graph. Outside London, show: **Live Mode is currently available in London only.** Live Mode requires internet access for current TfL disruption data.
+4. **Live Mode:** request browser location permission only after the user chooses Live Mode. If permission is granted, use the browser location to place the animated user figure and map the user to the nearest supported station within the 17-station graph for routing. If permission is denied, Live Mode must not start and Demo Mode remains available. Use real TfL lift disruption data and keep route calculation within the 17-station graph. Outside London, show: **Live Mode is currently available in London only.** Live Mode requires internet access for current TfL disruption data.
 5. **Animated map:** present the supported network on a clean, animated 3D map of central London (MapLibre GL JS with OpenFreeMap/OpenStreetMap vector tiles and extruded buildings), with stations at their real coordinates and a schematic SVG map as the offline fallback. Include a simple animated wheelchair-user figure, route line, station markers, lift icons, and subtle non-distracting train movement.
 6. **Installable PWA:** make the frontend installable on mobile and provide a simple install guide with iPhone and Android steps. The installed app shell may work offline, but Live Mode requires internet access for current TfL disruption data.
 7. **Safety note:** display the exact note **based on currently available TfL accessibility data.**
@@ -29,7 +29,7 @@ This is a seven-station proof of concept, not a London-wide journey planner.
 
 - User accounts, profiles, and saved trips.
 - A notification system.
-- Full-London routing or a graph beyond the seven-station subset.
+- Full-London routing or a graph beyond the 17-station subset.
 - Additional accessibility preferences or user-specific route settings.
 - Dashboards, sidebars, or pages beyond Map / Home, PWA Install Guide, and About StepFree.
 - Any extra feature, data provider, or service not named in this specification.
@@ -55,7 +55,7 @@ The outage makes the specific Green Park step-free pathway/transfer unavailable.
 
 The map, route summary, and outage animation must reflect the path returned by FalkorDB. Do not hard-code the alternate route as the routing result. Keep the sample route text and travel-time display tied to the graph result; an example such as “Victoria → London Bridge, 18 min” is illustrative, not a fixed journey time.
 
-Live Mode combines the supported graph with current TfL lift disruption data. Browser location is used only after permission is granted to place the animated user figure and map the user to the nearest supported station within the seven-station graph for routing. If permission is denied, Live Mode does not start and Demo Mode remains available. Live Mode requires internet access for current TfL disruption data. It must not imply that routes outside the supported graph are covered. The seven-station graph is the route coverage in both modes.
+Live Mode combines the supported graph with current TfL lift disruption data. Browser location is used only after permission is granted to place the animated user figure and map the user to the nearest supported station within the 17-station graph for routing. If permission is denied, Live Mode does not start and Demo Mode remains available. Live Mode requires internet access for current TfL disruption data. It must not imply that routes outside the supported graph are covered. The 17-station graph is the route coverage in both modes.
 
 ## User-facing pages and behavior
 
@@ -79,7 +79,7 @@ Use one consistent story across `README.md`, the demo video, hackathon submissio
 - Explain that the shortest route is not useful when a traveller cannot actually use it, and frame the benefit around independence, confidence, and practical social impact.
 - Keep the sponsor technology visible in the story: TfL supplies transit/accessibility state and disruption updates; FalkorDB stores the connected supported network and computes the valid step-free route and reroute when accessibility infrastructure changes.
 - Use the core line where appropriate: **“The shortest route isn’t useful if you can’t use it. StepFree finds the route you actually can.”**
-- Do not overstate coverage or safety. The MVP remains limited to the seven-station graph and must retain the exact safety note required above.
+- Do not overstate coverage or safety. The MVP remains limited to the 17-station graph and must retain the exact safety note required above.
 
 ## Architecture and stack
 
@@ -115,10 +115,10 @@ Milestones are deliverables and acceptance evidence, not time estimates.
 
 | Phase | Deliverable |
 |---|---|
-| 0 — Topology proof | Official TfL detailed topology is inspected for the seven-station subset; the exact Green Park lift/pathway identifier is verified and recorded; the intended normal and fallback paths are supported by the data. |
-| 1 — Graph and routing | The seven-station graph is seeded in FalkorDB with travel-time weights; FalkorDB returns a valid baseline step-free route and a different valid route when the Green Park connection is disabled. |
+| 0 — Topology proof | Official TfL detailed topology is inspected for the 17-station subset; the exact Green Park lift/pathway identifier is verified and recorded; the intended normal and fallback paths are supported by the data. |
+| 1 — Graph and routing | The 17-station graph is seeded in FalkorDB with travel-time weights; FalkorDB returns a valid baseline step-free route and a different valid route when the Green Park connection is disabled. |
 | 2 — Demo Mode | A repeatable user-visible Demo Mode flow starts from the normal route, simulates the Green Park outage, and displays the graph-computed reroute. |
-| 3 — Live Mode and location | Live Mode requests location only on entry; on permission, it places the animated user figure and maps the user to the nearest supported station within the seven-station graph; on denial, Live Mode does not start and Demo Mode remains available. It uses real TfL lift disruption data, requires internet access for current disruption data, and communicates that Live Mode is London-only. |
+| 3 — Live Mode and location | Live Mode requests location only on entry; on permission, it places the animated user figure and maps the user to the nearest supported station within the 17-station graph; on denial, Live Mode does not start and Demo Mode remains available. It uses real TfL lift disruption data, requires internet access for current disruption data, and communicates that Live Mode is London-only. |
 | 4 — Animated interface | The phone-first map, route states, lift states, user figure, subtle train movement, and outage transition match `DESIGN.md`; desktop adapts the same map as a larger transit view. |
 | 5 — PWA and guide | The frontend is installable as a PWA, the iPhone/Android Install Guide page is complete, the app shell can be available offline, and Live Mode clearly requires internet for current TfL disruption data. |
 | 6 — Verification and demo readiness | Vitest and Supertest cover the core routing/API behavior; the safety note, three pages, credits, and route demo are checked; the frontend/backend/FalkorDB deployment targets are prepared for the demonstration. |

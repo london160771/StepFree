@@ -17,8 +17,9 @@ export function About() {
           finds the new route you can still use.
         </p>
         <p className="text-lg leading-relaxed text-slate-700">
-          This is a proof of concept covering seven central London stations: Victoria, Green Park, St James’s Park,
-          Westminster, Waterloo, Southwark and London Bridge.
+          This is a proof of concept covering 17 London Underground stations: Victoria, Green Park, St James’s Park,
+          Westminster, Waterloo, Southwark, London Bridge, Bond Street, Tottenham Court Road, King’s Cross St Pancras,
+          Paddington, Liverpool Street, Farringdon, Moorgate, Canary Wharf, Tower Hill and Canada Water.
         </p>
         <div className="rounded-2xl bg-slate-50 p-4 text-base text-slate-700">
           <p className="font-semibold text-slate-900">Credits</p>

@@ -18,12 +18,24 @@ interface PathEdge {
   id: string | null;
   kind: 'entrance' | 'interchange' | null;
   line: LineId | null;
+  lines: LineId[] | null;
   minutes: number;
   liftsUsed: string[] | null;
+  via: string[] | null;
 }
 
 export type Leg =
-  | { type: 'ride'; line: LineId; stations: string[]; minutes: number }
+  | {
+      type: 'ride';
+      line: LineId;
+      /** Every line that runs this stretch on the same platforms (the rider can take any of them). */
+      lines: LineId[];
+      /** Supported stations on the train, in order (includes pass-through stations). */
+      stations: string[];
+      /** Unsupported stations the train passes; they are not StepFree stations. */
+      via: string[];
+      minutes: number;
+    }
   | { type: 'transfer'; kind: 'entrance' | 'interchange' | 'exit'; stationId: string; fromLine: LineId | null; toLine: LineId | null; minutes: number; lifts: string[] };
 
 export interface RouteResult {
@@ -42,6 +54,7 @@ export interface GraphEdge {
   from: string;
   to: string;
   line: LineId | null;
+  lines: LineId[] | null;
   kind: string | null;
   minutes: number;
   requiredLifts: string[] | null;
@@ -98,12 +111,12 @@ export class RoutingGraph {
     await graph.query(
       `UNWIND $nodes AS n
        MATCH (s:Station {id: n.stationId})
-       CREATE (a:Access {id: n.id, stationId: n.stationId, kind: n.kind, line: n.line})-[:AT]->(s)`,
+       CREATE (a:Access {id: n.id, stationId: n.stationId, kind: n.kind, line: n.line, lines: n.lines, boardable: n.boardable, direction: n.direction})-[:AT]->(s)`,
       {
         params: {
           nodes: [
-            ...streetNodes.map((n) => ({ id: n.id, stationId: n.stationId, kind: 'street', line: null })),
-            ...lineNodes.map((n) => ({ id: n.id, stationId: n.stationId, kind: 'line', line: n.line })),
+            ...streetNodes.map((n) => ({ id: n.id, stationId: n.stationId, kind: 'street', line: null, lines: [], boardable: true, direction: null })),
+            ...lineNodes.map((n) => ({ id: n.id, stationId: n.stationId, kind: 'line', line: n.line, lines: n.lines, boardable: n.boardable, direction: n.direction })),
           ],
         },
       },
@@ -112,7 +125,7 @@ export class RoutingGraph {
     await graph.query(
       `UNWIND $rides AS r
        MATCH (a:Access {id: r.from}), (b:Access {id: r.to})
-       CREATE (a)-[:RIDE {line: r.line, minutes: r.minutes}]->(b)`,
+       CREATE (a)-[:RIDE {line: r.line, lines: r.lines, minutes: r.minutes, via: r.via, viaCount: size(r.via)}]->(b)`,
       { params: { rides: rides.map((r) => ({ ...r })) } },
     );
     await graph.query(
@@ -178,7 +191,7 @@ export class RoutingGraph {
        CALL algo.SPpaths({sourceNode: a, targetNode: b, relTypes: $relTypes, weightProp: 'minutes', pathCount: 1})
        YIELD path, pathWeight
        RETURN [n IN nodes(path) | {id: n.id, stationId: n.stationId, kind: n.kind, line: n.line}] AS nodes,
-              [r IN relationships(path) | {type: type(r), id: r.id, kind: r.kind, line: r.line, minutes: r.minutes, liftsUsed: r.liftsUsed}] AS edges,
+              [r IN relationships(path) | {type: type(r), id: r.id, kind: r.kind, line: r.line, lines: r.lines, minutes: r.minutes, liftsUsed: r.liftsUsed, via: r.via}] AS edges,
               pathWeight`,
       { params: { from: `${fromStationId}:street`, to: `${toStationId}:street`, relTypes: ROUTABLE } },
     );
@@ -197,7 +210,7 @@ export class RoutingGraph {
   async edges(graphName: string): Promise<GraphEdge[]> {
     const reply = await this.db.selectGraph(graphName).roQuery<GraphEdge>(
       `MATCH (a:Access)-[r]->(b:Access)
-       RETURN type(r) AS type, r.id AS id, a.id AS from, b.id AS to, r.line AS line, r.kind AS kind, r.minutes AS minutes, r.requiredLifts AS requiredLifts`,
+       RETURN type(r) AS type, r.id AS id, a.id AS from, b.id AS to, r.line AS line, r.lines AS lines, r.kind AS kind, r.minutes AS minutes, r.requiredLifts AS requiredLifts`,
     );
     return reply.data ?? [];
   }
@@ -207,30 +220,51 @@ function dedupe(values: string[]): string[] {
   return values.filter((value, i) => i === 0 || values[i - 1] !== value);
 }
 
+const linePreference: LineId[] = ['district', 'jubilee', 'victoria', 'northern', 'central', 'piccadilly', 'bakerloo', 'metropolitan', 'hammersmith-city', 'circle', 'waterloo-city'];
+const preferred = (lines: LineId[]) => [...lines].sort((a, b) => linePreference.indexOf(a) - linePreference.indexOf(b))[0];
+
+/**
+ * Turn a FalkorDB path into journey legs. Consecutive rides stay one leg while some line serves all
+ * of them (a Circle train through Moorgate stays one leg even though other lines share the platform),
+ * so the rider is only told to change when they actually must.
+ */
 function toLegs(nodes: PathNode[], edges: PathEdge[]): Leg[] {
   const legs: Leg[] = [];
   edges.forEach((edge, i) => {
     const from = nodes[i];
     const to = nodes[i + 1];
     if (edge.type === 'RIDE') {
+      const lines = edge.lines?.length ? edge.lines : [edge.line!];
       const previous = legs.at(-1);
-      if (previous?.type === 'ride' && previous.line === edge.line) {
+      const shared = previous?.type === 'ride' ? previous.lines.filter((l) => lines.includes(l)) : [];
+      if (previous?.type === 'ride' && shared.length > 0) {
+        previous.lines = shared;
+        previous.line = preferred(shared);
         previous.stations.push(to.stationId);
+        previous.via.push(...(edge.via ?? []));
         previous.minutes += edge.minutes;
       } else {
-        legs.push({ type: 'ride', line: edge.line!, stations: [from.stationId, to.stationId], minutes: edge.minutes });
+        legs.push({ type: 'ride', line: preferred(lines), lines, stations: [from.stationId, to.stationId], via: [...(edge.via ?? [])], minutes: edge.minutes });
       }
     } else {
       legs.push({
         type: 'transfer',
         kind: edge.kind === 'interchange' ? 'interchange' : to.kind === 'street' ? 'exit' : 'entrance',
         stationId: from.stationId,
-        fromLine: from.line,
-        toLine: to.line,
+        fromLine: null,
+        toLine: null,
         minutes: edge.minutes,
         lifts: edge.liftsUsed ?? [],
       });
     }
+  });
+  // An interchange is described by the lines either side of it.
+  legs.forEach((leg, i) => {
+    if (leg.type !== 'transfer' || leg.kind !== 'interchange') return;
+    const before = legs[i - 1];
+    const after = legs[i + 1];
+    leg.fromLine = before?.type === 'ride' ? before.line : null;
+    leg.toLine = after?.type === 'ride' ? after.line : null;
   });
   return legs;
 }

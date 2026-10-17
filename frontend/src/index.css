@@ -81,15 +81,17 @@ body {
   }
 }
 
-.line-victoria {
-  background: #0098d4;
-}
-.line-district {
-  background: #00782a;
-}
-.line-jubilee {
-  background: #7c878e;
-}
+.line-bakerloo { background: #b36305; }
+.line-central { background: #e32017; }
+.line-circle { background: #ffd300; }
+.line-district { background: #00782a; }
+.line-hammersmith-city { background: #f3a9bb; }
+.line-jubilee { background: #7c878e; }
+.line-metropolitan { background: #9b0056; }
+.line-northern { background: #44403c; }
+.line-piccadilly { background: #003688; }
+.line-victoria { background: #0098d4; }
+.line-waterloo-city { background: #95cdba; }
 
 .calm-spinner {
   width: 1.1rem;
@@ -183,6 +185,9 @@ body {
   font-size: 10.5px;
   font-weight: 500;
   color: #64748b;
+}
+.sf-name-hidden .sf-name {
+  opacity: 0;
 }
 .sf-label-right .sf-name {
   left: 16px;

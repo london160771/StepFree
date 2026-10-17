@@ -6,8 +6,8 @@ const name = (id: string) => names[id];
 
 describe('route descriptions', () => {
   it('describes passing St James’s Park without alighting', () => {
-    expect(describeLeg({ type: 'ride', line: 'district', stations: ['VIC', 'SJP', 'WSM'], minutes: 3 }, name)).toBe(
-      "District line to Westminster, passing St James's Park (2 stops)",
+    expect(describeLeg({ type: 'ride', line: 'district', lines: ['district', 'circle'], stations: ['VIC', 'SJP', 'WSM'], via: [], minutes: 3 }, name)).toBe(
+      "District or Circle line to Westminster, passing St James's Park (2 stops)",
     );
   });
 
@@ -22,5 +22,18 @@ describe('route descriptions', () => {
 
   it('keeps the safety note exactly as specified', () => {
     expect(SAFETY_NOTE).toBe('based on currently available TfL accessibility data.');
+  });
+
+  it('counts unsupported stops a train passes without calling them StepFree stations', () => {
+    const text = describeLeg(
+      { type: 'ride', line: 'district', lines: ['district'], stations: ['WSM', 'TWH'], via: ['Embankment', 'Temple', 'Blackfriars'], minutes: 11 },
+      (id) => ({ WSM: 'Westminster', TWH: 'Tower Hill' })[id] ?? id,
+    );
+    expect(text).toBe('District line to Tower Hill, passing 3 other stops (4 stops)');
+  });
+
+  it('describes a change of platform within the same line', () => {
+    const text = describeLeg({ type: 'transfer', kind: 'interchange', stationId: 'MGT', fromLine: 'circle', toLine: 'circle', minutes: 6, lifts: ['a'] }, (id) => id);
+    expect(text).toBe('Step-free change of platform at MGT (1 lift)');
   });
 });

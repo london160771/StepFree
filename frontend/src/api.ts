@@ -1,4 +1,15 @@
-export type LineId = 'victoria' | 'district' | 'jubilee';
+export type LineId =
+  | 'bakerloo'
+  | 'central'
+  | 'circle'
+  | 'district'
+  | 'hammersmith-city'
+  | 'jubilee'
+  | 'metropolitan'
+  | 'northern'
+  | 'piccadilly'
+  | 'victoria'
+  | 'waterloo-city';
 export type Mode = 'demo' | 'live';
 
 export interface Station {
@@ -15,6 +26,8 @@ export interface GraphEdge {
   from: string;
   to: string;
   line: LineId | null;
+  /** Every line that runs this segment on the same platforms. */
+  lines: LineId[] | null;
   kind: string | null;
   minutes: number;
 }
@@ -26,7 +39,17 @@ export interface NetworkResponse {
 }
 
 export type Leg =
-  | { type: 'ride'; line: LineId; stations: string[]; minutes: number }
+  | {
+      type: 'ride';
+      line: LineId;
+      /** Every line that runs this stretch; the rider can take any of them. */
+      lines: LineId[];
+      /** Supported stations on the train, including pass-through ones. */
+      stations: string[];
+      /** Unsupported stations the train passes (not StepFree stations). */
+      via: string[];
+      minutes: number;
+    }
   | {
       type: 'transfer';
       kind: 'entrance' | 'interchange' | 'exit';

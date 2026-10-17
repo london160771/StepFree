@@ -1,13 +1,11 @@
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import { useEffect, useMemo } from 'react';
 import type { GraphEdge, LineId, Route, Station } from '../api';
-import { CITY_AREA, CITY_IMAGES } from './city';
 import {
-  LABEL_ANCHORS,
-  LIFT_OFFSETS,
+  LIFT_OFFSET,
   LINE_COLORS,
-  STATION_POSITIONS,
   journeySeconds,
+  labelAnchor,
   pointAt,
   routeDrawSeconds,
   routePoints,
@@ -30,6 +28,8 @@ export interface MapFrame {
 
 interface Props {
   frame: MapFrame;
+  /** Schematic positions of the stations (offline fallback). */
+  positions: Record<string, Point>;
   stations: Station[];
   edges: GraphEdge[];
   route: Route | null;
@@ -48,20 +48,18 @@ interface Props {
   entrance: 'none' | 'hidden' | 'reveal';
 }
 
-export function TransitMap({ frame, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey, entrance }: Props) {
+export function TransitMap({ frame, positions, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey, entrance }: Props) {
   const reduceMotion = useReducedMotion() ?? false;
   const staged = entrance !== 'none' && !reduceMotion;
   const shown = entrance === 'reveal';
-  // Phones get the lighter, lower-resolution backdrop and a stronger calming wash.
-  const compact = frame.w < 600;
-  const lines = useMemo(() => lineSegments(edges), [edges]);
+  const lines = useMemo(() => lineSegments(edges, positions), [edges, positions]);
   const routeLifts = useMemo(() => liftStations(route), [route]);
-  const points = route ? routePoints(route) : null;
+  const points = route ? routePoints(route, positions) : null;
   const drawSeconds = points ? routeDrawSeconds(points) : 0;
   const journey = points && userPoint ? [userPoint, ...points] : points;
   const stepFree = new Map(stations.map((s) => [s.id, s.stepFreeStreetAccess]));
   const names = new Map(stations.map((s) => [s.id, s.name]));
-  const stationOrder = Object.keys(STATION_POSITIONS);
+  const stationOrder = Object.keys(positions);
 
   /** Entrance props for a layer: hidden during the intro, then shown at `delay` once the reveal starts. */
   const enter = (delay: number, from: Record<string, number> = {}, duration = 0.8) =>
@@ -103,19 +101,8 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
 
         <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="var(--map-ground)" />
 
-        {/* Real central London (OpenStreetMap), warped onto the station layout and rendered in 2.5D. */}
-        <motion.g {...enter(REVEAL.city, { y: 12 }, 1.3)}>
-          <image
-            href={compact ? CITY_IMAGES.mobile : CITY_IMAGES.desktop}
-            x={CITY_AREA.x}
-            y={CITY_AREA.y}
-            width={CITY_AREA.w}
-            height={CITY_AREA.h}
-            preserveAspectRatio="none"
-          />
-        </motion.g>
         {/* Calm the city so the network stays the strongest layer. */}
-        <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="var(--map-ground)" opacity={compact ? 0.3 : 0.12} />
+        <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} fill="var(--map-ground)" opacity={0} />
         <motion.g {...enter(REVEAL.network, {}, 0.8)}>
           {lines.map((segment) => (
             <line
@@ -125,13 +112,13 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
               x2={segment.b.x}
               y2={segment.b.y}
               stroke="#fbfaf7"
-              strokeWidth={compact ? 30 : 34}
+              strokeWidth={30}
               strokeLinecap="round"
               opacity={0.55}
             />
           ))}
           {stationOrder.map((id) => (
-            <circle key={id} cx={STATION_POSITIONS[id].x} cy={STATION_POSITIONS[id].y} r={24} fill="#fbfaf7" opacity={0.5} />
+            <circle key={id} cx={positions[id].x} cy={positions[id].y} r={24} fill="#fbfaf7" opacity={0.5} />
           ))}
         </motion.g>
         {/* Slow cloud shadows drifting over the city. */}
@@ -169,7 +156,7 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
         aria-label={
           route
             ? `Map of the supported network. Step-free route: ${route.stations.map((id) => names.get(id)).join(', ')}.`
-            : 'Map of the seven supported stations.'
+            : 'Map of the 17 supported stations.'
         }
       >
         <defs>
@@ -217,7 +204,7 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
           {fadingRoute && (
             <motion.path
               key={`fade-${fadingRoute.stations.join('-')}`}
-              d={toPath(routePoints(fadingRoute))}
+              d={toPath(routePoints(fadingRoute, positions))}
               fill="none"
               strokeWidth={6}
               strokeLinecap="round"
@@ -282,12 +269,12 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
 
         {/* Stations */}
         {stationOrder.map((id, i) => {
-          const p = STATION_POSITIONS[id];
+          const p = positions[id];
           const onRoute = route?.stations.includes(id) ?? false;
           const interchange = route?.legs.some((l) => l.type === 'transfer' && l.kind === 'interchange' && l.stationId === id);
           const isEnd = route ? id === route.stations[0] || id === route.stations.at(-1) : false;
           const accessible = stepFree.get(id) ?? true;
-          const label = LABEL_ANCHORS[id];
+          const label = labelAnchor(id);
           return (
             <motion.g key={id} {...enter(REVEAL.stations + i * 0.06, { y: -6 }, 0.5)}>
               {outageStationIds.includes(id) && <OutagePulse at={p} reduceMotion={reduceMotion} />}
@@ -321,10 +308,10 @@ export function TransitMap({ frame, stations, edges, route, fadingRoute, outageS
 
         {/* Lift icons appear once the route line has reached them; the unavailable lift shows at once. */}
         {[...routeLifts].filter((id) => !outageStationIds.includes(id)).map((id) => (
-          <LiftIcon key={`${journeyKey}-${id}`} at={liftSpot(id)} state="ok" delay={reduceMotion ? 0 : drawSeconds * 0.8} />
+          <LiftIcon key={`${journeyKey}-${id}`} at={liftSpot(id, positions)} state="ok" delay={reduceMotion ? 0 : drawSeconds * 0.8} />
         ))}
         {outageStationIds.map((id) => (
-          <LiftIcon key={`out-${id}`} at={liftSpot(id)} state="unavailable" delay={0} />
+          <LiftIcon key={`out-${id}`} at={liftSpot(id, positions)} state="unavailable" delay={0} />
         ))}
 
         {journey && (
@@ -343,13 +330,13 @@ interface Segment {
   b: Point;
 }
 
-function lineSegments(edges: GraphEdge[]): Segment[] {
+function lineSegments(edges: GraphEdge[], positions: Record<string, Point>): Segment[] {
   const seen = new Map<string, Segment>();
   for (const edge of edges) {
     if (edge.type !== 'RIDE' || !edge.line) continue;
     const [a, b] = [edge.from.split(':')[0], edge.to.split(':')[0]].sort();
     const key = `${edge.line}:${a}-${b}`;
-    if (!seen.has(key)) seen.set(key, { key, line: edge.line, a: stationPoint(a), b: stationPoint(b) });
+    if (!seen.has(key)) seen.set(key, { key, line: edge.line, a: stationPoint(positions, a), b: stationPoint(positions, b) });
   }
   return [...seen.values()];
 }
@@ -360,10 +347,9 @@ function liftStations(route: Route | null): Set<string> {
   return ids;
 }
 
-function liftSpot(stationId: string): Point {
-  const p = stationPoint(stationId);
-  const offset = LIFT_OFFSETS[stationId];
-  return { x: p.x + offset.x, y: p.y + offset.y };
+function liftSpot(stationId: string, positions: Record<string, Point>): Point {
+  const p = stationPoint(positions, stationId);
+  return { x: p.x + LIFT_OFFSET.x, y: p.y + LIFT_OFFSET.y };
 }
 
 function LiftIcon({ at, state, delay }: { at: Point; state: 'ok' | 'unavailable'; delay: number }) {

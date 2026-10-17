@@ -48,7 +48,7 @@ function LiveEntry({ store }: { store: Store }) {
               <div>
                 <p className="text-lg font-semibold text-slate-900">Use your location to find step-free routes around you.</p>
                 <p className="mt-1 text-base text-slate-600">
-                  StepFree places you on the map and starts from the nearest of its seven supported stations. Live Mode uses
+                  StepFree places you on the map and starts from the nearest of its 17 supported stations. Live Mode uses
                   current TfL lift data, needs an internet connection and works in London only.
                 </p>
               </div>
@@ -67,7 +67,7 @@ function LiveEntry({ store }: { store: Store }) {
         )}
         {live.status === 'outside' && (
           <Notice title={live.message}>
-            StepFree Live covers seven stations in central London. You can still try the Demo.
+            StepFree Live covers 17 Underground stations in London. You can still try the Demo.
             <div className="mt-4">{backToDemo}</div>
           </Notice>
         )}
@@ -190,7 +190,7 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
   if (phase === 'noroute') {
     return (
       <Notice title="No step-free route right now">
-        {noRouteReason} StepFree only covers its seven supported stations.
+        {noRouteReason ?? 'No step-free route is currently available in the supported network.'}
         {mode === 'demo' && unavailableLifts.length > 0 && (
           <div className="mt-4">
             <button type="button" className="btn-secondary" onClick={resetDemo}>

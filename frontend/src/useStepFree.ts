@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type LiftDisruption, type Mode, type NetworkResponse, type Route } from './api';
-import { placeOnMap, type Point } from './map/layout';
+import { placeOnMap, schematicPositions, type Point } from './map/layout';
 
 export type Phase = 'idle' | 'finding' | 'route' | 'outage' | 'recalculating' | 'rerouted' | 'noroute';
 
@@ -152,6 +152,7 @@ export function useStepFree() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        const stations = network?.stations ?? [];
         try {
           const status = await api.liveStatus(latitude, longitude);
           if (!status.inLondon) {
@@ -165,7 +166,7 @@ export function useStepFree() {
             nearest: status.nearestStation,
             disruptions: status.disruptions,
             fetchedAt: status.fetchedAt,
-            userPoint: placeOnMap(network?.stations ?? [], status.nearestStation.id, latitude, longitude),
+            userPoint: placeOnMap(stations, schematicPositions(stations), status.nearestStation.id, latitude, longitude),
             location: { lat: latitude, lon: longitude },
           });
           setOutageStationIds(affectedStations(status.disruptions, status.unavailableTransferIds));

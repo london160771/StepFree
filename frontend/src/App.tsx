@@ -1,10 +1,11 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Mode } from './api';
 import { RoutePanel } from './components/RoutePanel';
 import { TransitMap } from './map/TransitMap';
 import { Intro } from './components/Intro';
 import { INTRO } from './map/timeline';
+import { contentBounds, schematicPositions } from './map/layout';
 import { useMapFrame } from './map/useMapFrame';
 import { About } from './pages/About';
 import { InstallGuide } from './pages/InstallGuide';
@@ -20,6 +21,8 @@ function MapUnavailable({ onFail }: { onFail: () => void }) {
   useEffect(onFail, [onFail]);
   return <></>;
 }
+
+const FALLBACK_STATIONS = [{ id: 'VIC', lat: 51.4965, lon: -0.1447 }];
 
 type Page = 'map' | 'install' | 'about';
 
@@ -122,7 +125,9 @@ function MapHome({
   const mapRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   // On phones the sheet covers up to ~46% of the screen; reserve that so the map never jumps as results change.
-  const frame = useMapFrame(mapRef, { top: 112, left: isDesktop ? 440 : 0, bottom: isDesktop ? 24 : 0, bottomRatio: isDesktop ? 0 : 0.46 });
+  const positions = useMemo(() => schematicPositions(store.network?.stations ?? FALLBACK_STATIONS), [store.network]);
+  const content = useMemo(() => contentBounds(positions), [positions]);
+  const frame = useMapFrame(mapRef, { top: 112, left: isDesktop ? 440 : 0, bottom: isDesktop ? 24 : 0, bottomRatio: isDesktop ? 0 : 0.46 }, content);
   const userPoint = store.mode === 'live' && store.live.status === 'ready' ? store.live.userPoint : null;
   const userLocation = store.mode === 'live' && store.live.status === 'ready' ? store.live.location : null;
   const [map3d, setMap3d] = useState(true);
@@ -136,6 +141,7 @@ function MapHome({
     <main className="relative h-full">
       <div ref={mapRef} className="absolute inset-0">
         {store.network && map3d && (
+          <>
           <Suspense fallback={null}>
             <LondonMap
               stations={store.network.stations}
@@ -148,6 +154,7 @@ function MapHome({
               entrance={entrance}
               compact={!isDesktop}
               padding={padding}
+              viewport={size}
               onFail={() => {
                 setMap3d(false);
                 onMapReady();
@@ -155,6 +162,10 @@ function MapHome({
               onReady={onMapReady}
             />
           </Suspense>
+          <p className="pointer-events-none absolute bottom-3 right-3 z-10 hidden rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600 lg:block">
+            © OpenFreeMap © OpenMapTiles Data from OpenStreetMap
+          </p>
+          </>
         )}
         {store.network && !map3d && (
           <>
@@ -168,6 +179,7 @@ function MapHome({
             >
               <TransitMap
                 frame={frame}
+                positions={positions}
                 stations={store.network.stations}
                 edges={store.network.edges}
                 route={store.route}

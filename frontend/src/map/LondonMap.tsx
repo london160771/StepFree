@@ -4,9 +4,9 @@ import type { GeoJSONSource, Map as MapLibreMap, Marker } from 'maplibre-gl';
 // Bundle MapLibre's web worker with Vite and tell MapLibre where it is.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphEdge, Route, Station } from '../api';
-import { easeInOut, journeySecondsGeo, pointAlong, routeDrawSecondsGeo, type LngLat } from './geo';
+import { distanceKm, easeInOut, journeySecondsGeo, pointAlong, routeDrawSecondsGeo, type LngLat } from './geo';
 import { LINE_COLORS } from './layout';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -16,30 +16,57 @@ const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const ROUTE_COLOR = '#111827';
 
 /**
- * Phones render the map 1.8x larger and scale it down, so the whole network fits while the camera stays
- * at tile zoom 13, where OpenStreetMap buildings exist. Markers scale back up to stay readable.
+ * The map is drawn larger than the screen and scaled down when the whole network (or a long route) needs a
+ * zoom below 13: OpenStreetMap buildings only exist in tiles from zoom 13, so a smaller zoom would flatten
+ * the city. Markers scale back up so they stay readable. The scale is worked out from the stations to frame.
  */
-const UI_SCALE = 1.8;
+const BUILDING_ZOOM = 13;
+const MAX_UI_SCALE = 1.75;
 
 /** Opening shot: low over the South Bank looking across the Thames at Westminster, like the intro photo. */
 const INTRO_CAMERA = { center: [-0.1197, 51.5003] as LngLat, zoom: 16.4, pitch: 70, bearing: -74 };
-/** Keep the camera over central London. */
+/** Keep the camera over central London (wide enough for every supported station and its surroundings). */
 const LONDON_BOUNDS: [LngLat, LngLat] = [
-  [-0.26, 51.45],
-  [0.01, 51.56],
+  [-0.31, 51.42],
+  [0.05, 51.59],
 ];
 
-type Side = 'left' | 'right' | 'below' | 'above';
-/** Which side of its marker each station label sits on, per camera (desktop / phone). */
-const LABEL_SIDE: Record<string, [Side, Side]> = {
-  VIC: ['left', 'left'],
-  GPK: ['above', 'left'],
-  SJP: ['right', 'right'],
-  WSM: ['above', 'above'],
-  WLO: ['below', 'below'],
-  SWK: ['below', 'below'],
-  LNB: ['right', 'left'],
-};
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+/** Stations the landing view frames. Phones frame the central core; the rest are one pan (or route) away. */
+export function landingStations(stations: Station[], compact: boolean): Station[] {
+  if (!compact) return stations;
+  const lats = stations.map((s) => s.lat).sort((a, b) => a - b);
+  const lons = stations.map((s) => s.lon).sort((a, b) => a - b);
+  const mid = { lat: lats[Math.floor(lats.length / 2)], lon: lons[Math.floor(lons.length / 2)] };
+  const near = stations.filter((s) => distanceKm([s.lon, s.lat], [mid.lon, mid.lat]) <= 4.5);
+  return near.length >= 5 ? near : stations;
+}
+
+/** How much larger than the screen the map has to be drawn so the given stations fit at building zoom. */
+export function uiScaleFor(coords: LngLat[], viewport: { width: number; height: number }, padding: Padding, bearing: number, pitch: number): number {
+  if (viewport.width === 0 || coords.length < 2) return 1;
+  const mLon = 111_320 * Math.cos(toRad(51.51));
+  const b = toRad(bearing);
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const [lon, lat] of coords) {
+    const east = lon * mLon;
+    const north = lat * 111_320;
+    xs.push(east * Math.cos(b) - north * Math.sin(b));
+    ys.push(east * Math.sin(b) + north * Math.cos(b));
+  }
+  const spanX = Math.max(...xs) - Math.min(...xs) || 1;
+  const spanY = (Math.max(...ys) - Math.min(...ys) || 1) * Math.cos(toRad(pitch));
+  const visibleW = Math.max(viewport.width - padding.left - padding.right, 80);
+  const visibleH = Math.max(viewport.height - padding.top - padding.bottom, 80);
+  const pxPerMetre = Math.min(visibleW / spanX, visibleH / spanY);
+  const zoom = Math.log2(78_271.5 * Math.cos(toRad(51.51)) * pxPerMetre) - 0.2;
+  return Math.min(Math.max(2 ** (BUILDING_ZOOM - zoom), 1), MAX_UI_SCALE);
+}
+
+type Side = 'right' | 'left' | 'above' | 'below';
+const SIDES: Side[] = ['right', 'left', 'above', 'below'];
 
 export interface Padding {
   top: number;
@@ -60,6 +87,8 @@ interface Props {
   entrance: 'none' | 'hidden' | 'reveal';
   compact: boolean;
   padding: Padding;
+  /** Size of the map area on screen, in CSS pixels. */
+  viewport: { width: number; height: number };
   /** Called if the map cannot load (offline, blocked tiles, no WebGL); the app falls back to the schematic map. */
   onFail: () => void;
   /** Called once the city has loaded, so the intro can hand over to it. */
@@ -73,7 +102,7 @@ const line = (coords: LngLat[]) => ({
 });
 
 export default function LondonMap(props: Props) {
-  const { stations, edges, route, fadingRoute, outageStationIds, userLocation, journeyKey, entrance, compact, padding, onFail, onReady } = props;
+  const { stations, edges, route, fadingRoute, outageStationIds, userLocation, journeyKey, entrance, compact, padding, viewport, onFail, onReady } = props;
   const reduceMotion = useReducedMotion() ?? false;
   const staged = entrance !== 'none' && !reduceMotion;
   const container = useRef<HTMLDivElement>(null);
@@ -87,17 +116,31 @@ export default function LondonMap(props: Props) {
   onReadyRef.current = onReady;
 
   const coords = useMemo(() => new Map(stations.map((s) => [s.id, [s.lon, s.lat] as LngLat])), [stations]);
-  // Look east along the Thames toward the City: Victoria near the camera, London Bridge in the distance.
-  // Phones use a flatter, wider view so the whole network fits above the route sheet.
-  const view = compact ? { zoom: 13.0, pitch: 42, bearing: 50 } : { zoom: 13.45, pitch: 58, bearing: 30 };
-  const k = compact ? UI_SCALE : 1;
-  const mapPadding = { top: padding.top * k, right: padding.right * k, bottom: padding.bottom * k, left: padding.left * k };
+  // Desktop looks across the whole network from the south (Victoria nearest, King's Cross furthest, Paddington to the
+  // west and Canary Wharf to the east). Phones turn the network so its long east-west axis runs up the screen.
+  const view = compact ? { pitch: 42, bearing: 78 } : { pitch: 56, bearing: -10 };
+  const landing = useMemo(() => landingStations(stations, compact), [stations, compact]);
+  const k = useMemo(
+    () => uiScaleFor(landing.map((s) => [s.lon, s.lat] as LngLat), viewport, padding, view.bearing, view.pitch),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [landing, viewport.width, viewport.height, padding.top, padding.right, padding.bottom, padding.left, view.bearing, view.pitch],
+  );
+  // Quantise so small resizes do not rebuild the canvas.
+  const uiScale = Math.round(k * 4) / 4;
+  const kRef = useRef(uiScale);
+  kRef.current = uiScale;
+  const mapPadding = useMemo(
+    () => ({ top: padding.top * uiScale, right: padding.right * uiScale, bottom: padding.bottom * uiScale, left: padding.left * uiScale }),
+    [padding.top, padding.right, padding.bottom, padding.left, uiScale],
+  );
+  // The stations the camera frames: the route when there is one, otherwise the landing set.
+  const fitIds = route ? route.stations : landing.map((s) => s.id);
   const centre = useMemo(() => {
     const all = [...coords.values()];
-    const lngs = all.map((c) => c[0]);
-    const lats = all.map((c) => c[1]);
-    return [(Math.min(...lngs) + Math.max(...lngs)) / 2, (Math.min(...lats) + Math.max(...lats)) / 2] as LngLat;
+    const mid = (i: 0 | 1) => (Math.min(...all.map((c) => c[i])) + Math.max(...all.map((c) => c[i]))) / 2;
+    return [mid(0), mid(1)] as LngLat;
   }, [coords]);
+  const fitKey = fitIds.join(',');
 
   // Create the map once. The style is fetched first: if that fails (offline, blocked), fall back at once
   // rather than showing an empty canvas. Individual tile errors later are tolerated.
@@ -127,11 +170,11 @@ export default function LondonMap(props: Props) {
           dragRotate: false,
           pitchWithRotate: false,
           touchPitch: false,
-          // Phones show the same credit in the route sheet instead (see App).
-          attributionControl: compact ? false : { compact: true },
+          // The credit is shown by the app (bottom of the map on desktop, in the route sheet on phones).
+          attributionControl: false,
           fadeDuration: 150,
-          // On phones the oversized map uses a lower pixel ratio, so it costs no more to draw than a normal one.
-          ...(compact ? { pixelRatio: Math.min(window.devicePixelRatio || 1, 2) / UI_SCALE } : {}),
+          // An oversized map uses a lower pixel ratio, so it costs no more to draw than a normal one.
+          pixelRatio: Math.min(window.devicePixelRatio || 1, 2) / kRef.current,
         });
       } catch {
         // No WebGL.
@@ -143,8 +186,8 @@ export default function LondonMap(props: Props) {
       created.keyboard.disableRotation();
       mapRef.current = created;
       created.on('load', () => {
-        styleBasemap(created, staged ? 0.2 : 1);
-        addOverlays(created, edges, coords, staged);
+        styleBasemap(created, staged ? 0.2 : 1, compact);
+        addOverlays(created, edges, coords, staged, kRef.current);
         setReady(true);
         onReadyRef.current?.();
       });
@@ -164,9 +207,9 @@ export default function LondonMap(props: Props) {
     if (!ready || !map) return;
     stations.forEach((station, i) => {
       const el = document.createElement('div');
-      el.className = `sf-marker sf-station sf-label-${LABEL_SIDE[station.id]?.[compact ? 1 : 0] ?? 'right'}${station.stepFreeStreetAccess ? '' : ' sf-station-pass'}`;
-      el.style.setProperty('--sf-delay', `${staged ? 1.25 + i * 0.07 : 0}s`);
-      el.innerHTML = `<div class="sf-ui"><span class="sf-dot"></span><span class="sf-name">${station.name}${
+      el.className = `sf-marker sf-station sf-label-right${station.stepFreeStreetAccess ? '' : ' sf-station-pass'}`;
+      el.style.setProperty('--sf-delay', `${staged ? 1.25 + i * 0.05 : 0}s`);
+      el.innerHTML = `<div class="sf-ui" title="${station.name}"><span class="sf-dot"></span><span class="sf-name">${station.name}${
         station.stepFreeStreetAccess ? '' : '<small>not step-free · pass through</small>'
       }</span></div>`;
       if (!staged) el.classList.add('sf-shown');
@@ -177,30 +220,98 @@ export default function LondonMap(props: Props) {
       markers.forEach((m) => m.remove());
       markers.clear();
     };
-  }, [ready, stations, coords, staged, compact]);
+  }, [ready, stations, coords, staged]);
 
-  // Camera: hold the Westminster shot during the intro, then settle into the StepFree view.
+  // Labels: every station keeps its marker, and its name goes on the first side that does not collide with
+  // another label. Stations on the current route are placed first so their names always show.
+  const routeIdsRef = useRef<string[]>([]);
+  routeIdsRef.current = [...(route ? [route.stations[0], route.stations.at(-1)!, ...route.stations] : []), ...outageStationIds];
+  const placeLabels = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const scale = kRef.current;
+    const priority = new Set(routeIdsRef.current);
+    const ordered = [...stations].sort((a, b) => Number(priority.has(b.id)) - Number(priority.has(a.id)));
+    const { clientWidth: width, clientHeight: height } = map.getContainer();
+    type Rect = { x0: number; y0: number; x1: number; y1: number };
+    const taken: Rect[] = [];
+    const hits = (r: Rect) => taken.some((t) => r.x0 < t.x1 && r.x1 > t.x0 && r.y0 < t.y1 && r.y1 > t.y0);
+    for (const station of ordered) {
+      const marker = stationMarkers.current.get(station.id);
+      if (!marker) continue;
+      const el = marker.getElement();
+      const p = map.project(coords.get(station.id)!);
+      const w = (station.name.length * 7.6 + 8) * scale;
+      const h = (station.stepFreeStreetAccess ? 20 : 32) * scale;
+      const r = 13 * scale;
+      const dot: Rect = { x0: p.x - r, y0: p.y - r, x1: p.x + r, y1: p.y + r };
+      const spots: Record<Side, Rect> = {
+        right: { x0: p.x + r, y0: p.y - h / 2, x1: p.x + r + w, y1: p.y + h / 2 },
+        left: { x0: p.x - r - w, y0: p.y - h / 2, x1: p.x - r, y1: p.y + h / 2 },
+        above: { x0: p.x - w / 2, y0: p.y - r - h, x1: p.x + w / 2, y1: p.y - r },
+        below: { x0: p.x - w / 2, y0: p.y + r, x1: p.x + w / 2, y1: p.y + r + h },
+      };
+      const inside = (q: Rect) => q.x0 >= 0 && q.x1 <= width && q.y0 >= 0 && q.y1 <= height;
+      const chosen = SIDES.find((side) => inside(spots[side]) && !hits(spots[side]));
+      SIDES.forEach((side) => el.classList.remove(`sf-label-${side}`));
+      el.classList.toggle('sf-name-hidden', !chosen && !priority.has(station.id));
+      const side = chosen ?? 'right';
+      el.classList.add(`sf-label-${side}`);
+      taken.push(dot);
+      if (chosen || priority.has(station.id)) taken.push(spots[side]);
+    }
+  }, [stations, coords]);
+
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map || entrance === 'hidden' || settled.current) return;
+    if (!ready || !map) return;
+    map.on('moveend', placeLabels);
+    placeLabels();
+    return () => {
+      map.off('moveend', placeLabels);
+    };
+  }, [ready, placeLabels, route, outageStationIds, uiScale]);
+
+  // The oversized map follows the scale: pixel ratio, size and line widths.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    map.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2) / uiScale);
+    map.resize();
+    setLineWidths(map, uiScale);
+  }, [ready, uiScale]);
+
+  // Camera: hold the Westminster shot during the intro, then settle into the StepFree view, and from then on
+  // frame the route (or the landing stations when there is none). Never an aggressive move.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || entrance === 'hidden') return;
+    const first = !settled.current;
     settled.current = true;
-    const animated = staged && entrance === 'reveal';
-    map.easeTo({ center: centre, ...view, padding: mapPadding, duration: animated ? 2800 : 0, easing: (t) => 1 - Math.pow(1 - t, 3) });
+    const animated = staged && entrance === 'reveal' && first;
+    const points = fitIds.map((id) => coords.get(id)).filter((c): c is LngLat => Boolean(c));
+    const duration = animated ? 2800 : first ? 0 : reduceMotion ? 0 : 1200;
+    const easing = (t: number) => 1 - Math.pow(1 - t, 3);
+    if (points.length < 2) {
+      map.easeTo({ center: points[0] ?? centre, zoom: 14, ...view, padding: mapPadding, duration, easing });
+    } else {
+      const lngs = points.map((c) => c[0]);
+      const lats = points.map((c) => c[1]);
+      map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        { padding: mapPadding, bearing: view.bearing, pitch: view.pitch, maxZoom: 15, duration, easing },
+      );
+    }
     if (animated) {
       riseBuildings(map, 0.2, 1, 2200);
       for (const id of ['sf-glow', 'sf-network']) map.setPaintProperty(id, 'line-opacity', id === 'sf-glow' ? 0.75 : 0.95);
       stationMarkers.current.forEach((m) => m.getElement().classList.add('sf-shown'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, entrance]);
-
-  // Keep the StepFree view framed if the layout changes (rotation, desktop/phone switch).
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!ready || !map || !settled.current) return;
-    map.easeTo({ center: centre, ...view, padding: mapPadding, duration: 600 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compact, padding.top, padding.left, padding.bottom, padding.right]);
+  }, [ready, entrance, fitKey, mapPadding, view.bearing, view.pitch]);
 
   // Station marker states for the current route and outage.
   useEffect(() => {
@@ -364,8 +475,12 @@ export default function LondonMap(props: Props) {
   return (
     <div
       ref={container}
-      className={compact ? 'sf-compact' : 'h-full w-full'}
-      style={compact ? { width: `${UI_SCALE * 100}%`, height: `${UI_SCALE * 100}%`, transform: `scale(${1 / UI_SCALE})`, transformOrigin: '0 0', ['--sf-ui' as string]: UI_SCALE } : undefined}
+      className={uiScale > 1 ? undefined : 'h-full w-full'}
+      style={
+        uiScale > 1
+          ? { width: `${uiScale * 100}%`, height: `${uiScale * 100}%`, transform: `scale(${1 / uiScale})`, transformOrigin: '0 0', ['--sf-ui' as string]: uiScale }
+          : undefined
+      }
       role="img"
       aria-label={
         route
@@ -377,7 +492,7 @@ export default function LondonMap(props: Props) {
 }
 
 /** Calm the Positron basemap and add London-toned 3D buildings from OpenStreetMap heights. */
-function styleBasemap(map: MapLibreMap, heightFactor: number) {
+function styleBasemap(map: MapLibreMap, heightFactor: number, lowDetail: boolean) {
   const set = (layer: string, prop: string, value: Parameters<MapLibreMap['setPaintProperty']>[2]) => {
     if (map.getLayer(layer)) map.setPaintProperty(layer, prop as Parameters<MapLibreMap['setPaintProperty']>[1], value);
   };
@@ -406,6 +521,8 @@ function styleBasemap(map: MapLibreMap, heightFactor: number) {
       source: 'openmaptiles',
       'source-layer': 'building',
       minzoom: 13,
+      // Phones skip the smallest outbuildings: far fewer shapes to draw, and nothing the route depends on.
+      ...(lowDetail ? { filter: ['>=', ['coalesce', ['get', 'render_height'], 8], 7] as maplibregl.FilterSpecification } : {}),
       paint: {
         // Portland stone and London stock brick for most streets, cooler glass for taller towers.
         'fill-extrusion-color': [
@@ -450,26 +567,57 @@ function riseBuildings(map: MapLibreMap, from: number, to: number, ms: number) {
   requestAnimationFrame(tick);
 }
 
+/** Line width that grows with zoom, scaled up when the map is drawn oversized. */
+const widthAt = (base: number, scale: number) =>
+  ['interpolate', ['exponential', 1.6], ['zoom'], 12, base * 0.55 * scale, 14, base * scale, 16.5, base * 2.1 * scale] as maplibregl.ExpressionSpecification;
+
+/** Parallel offset so lines that share two stations (Victoria and Piccadilly, say) stay side by side. */
+const offsetAt = (scale: number) =>
+  [
+    'interpolate',
+    ['exponential', 1.6],
+    ['zoom'],
+    12,
+    ['*', ['get', 'offset'], 0.55 * scale],
+    14,
+    ['*', ['get', 'offset'], scale],
+    16.5,
+    ['*', ['get', 'offset'], 2.1 * scale],
+  ] as maplibregl.ExpressionSpecification;
+
+function setLineWidths(map: MapLibreMap, scale: number) {
+  const set = (id: string, prop: 'line-width' | 'line-offset', value: maplibregl.ExpressionSpecification) => {
+    if (map.getLayer(id)) map.setPaintProperty(id, prop, value);
+  };
+  set('sf-glow', 'line-width', widthAt(34, scale));
+  set('sf-network', 'line-width', widthAt(7, scale));
+  set('sf-network', 'line-offset', offsetAt(scale));
+  set('sf-route-old', 'line-width', widthAt(5, scale));
+  set('sf-route-casing', 'line-width', widthAt(15, scale));
+  set('sf-route', 'line-width', widthAt(9, scale));
+}
+
 /** FalkorDB network and route layers, drawn above the city. */
-function addOverlays(map: MapLibreMap, edges: GraphEdge[], coords: Map<string, LngLat>, staged: boolean) {
-  const seen = new Set<string>();
-  const features = [];
+function addOverlays(map: MapLibreMap, edges: GraphEdge[], coords: Map<string, LngLat>, staged: boolean, scale: number) {
+  // One feature per line between two stations; lines that share the same pair are laid side by side.
+  const pairs = new Map<string, { line: GraphEdge['line']; a: string; b: string }[]>();
   for (const edge of edges) {
     if (edge.type !== 'RIDE' || !edge.line) continue;
     const [a, b] = [edge.from.split(':')[0], edge.to.split(':')[0]].sort();
-    const key = `${edge.line}:${a}-${b}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    features.push({
-      type: 'Feature' as const,
-      properties: { color: LINE_COLORS[edge.line] },
-      geometry: { type: 'LineString' as const, coordinates: [coords.get(a)!, coords.get(b)!] },
-    });
+    const list = pairs.get(`${a}-${b}`) ?? [];
+    if (!list.some((x) => x.line === edge.line)) list.push({ line: edge.line, a, b });
+    pairs.set(`${a}-${b}`, list);
   }
+  const features = [...pairs.values()].flatMap((list) =>
+    list.map(({ line, a, b }, i) => ({
+      type: 'Feature' as const,
+      properties: { color: LINE_COLORS[line!], offset: (i - (list.length - 1) / 2) * 8 },
+      geometry: { type: 'LineString' as const, coordinates: [coords.get(a)!, coords.get(b)!] },
+    })),
+  );
   map.addSource('sf-network', { type: 'geojson', data: { type: 'FeatureCollection', features } });
   map.addSource('sf-route', { type: 'geojson', data: empty, lineMetrics: true });
   map.addSource('sf-route-old', { type: 'geojson', data: empty });
-  const width = (base: number) => ['interpolate', ['exponential', 1.6], ['zoom'], 12, base * 0.55, 14, base, 16.5, base * 2.1] as maplibregl.ExpressionSpecification;
   const fade = { duration: 900, delay: staged ? 900 : 0 };
 
   // A soft light band under the network calms the buildings around it.
@@ -478,14 +626,20 @@ function addOverlays(map: MapLibreMap, edges: GraphEdge[], coords: Map<string, L
     type: 'line',
     source: 'sf-network',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#fbfaf6', 'line-width': width(34), 'line-blur': width(12), 'line-opacity': staged ? 0 : 0.75, 'line-opacity-transition': fade },
+    paint: { 'line-color': '#fbfaf6', 'line-width': widthAt(34, scale), 'line-blur': widthAt(12, scale), 'line-opacity': staged ? 0 : 0.75, 'line-opacity-transition': fade },
   });
   map.addLayer({
     id: 'sf-network',
     type: 'line',
     source: 'sf-network',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': ['get', 'color'], 'line-width': width(7), 'line-opacity': staged ? 0 : 0.95, 'line-opacity-transition': fade },
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': widthAt(7, scale),
+      'line-offset': offsetAt(scale),
+      'line-opacity': staged ? 0 : 0.95,
+      'line-opacity-transition': fade,
+    },
   });
   map.addLayer({
     id: 'sf-route-old',
@@ -494,7 +648,7 @@ function addOverlays(map: MapLibreMap, edges: GraphEdge[], coords: Map<string, L
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
       'line-color': '#64748b',
-      'line-width': width(5),
+      'line-width': widthAt(5, scale),
       'line-dasharray': [0.4, 2.2],
       'line-opacity': 0.9,
       'line-opacity-transition': { duration: 1200, delay: 0 },
@@ -505,14 +659,14 @@ function addOverlays(map: MapLibreMap, edges: GraphEdge[], coords: Map<string, L
     type: 'line',
     source: 'sf-route',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-gradient': routeGradient('#ffffff', 0), 'line-width': width(15) },
+    paint: { 'line-gradient': routeGradient('#ffffff', 0), 'line-width': widthAt(15, scale) },
   });
   map.addLayer({
     id: 'sf-route',
     type: 'line',
     source: 'sf-route',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-gradient': routeGradient(ROUTE_COLOR, 0), 'line-width': width(9) },
+    paint: { 'line-gradient': routeGradient(ROUTE_COLOR, 0), 'line-width': widthAt(9, scale) },
   });
 }
 

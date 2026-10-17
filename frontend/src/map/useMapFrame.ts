@@ -1,15 +1,22 @@
 import { useLayoutEffect, useState, type RefObject } from 'react';
 import type { MapFrame } from './TransitMap';
 
-/** Map content (stations and labels) that must stay visible. */
-const CONTENT = { x: 22, y: 84, w: 376, h: 456 };
+export interface MapContent {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 /**
  * Fit the schematic network into the visible part of the container. The viewBox grows to the
- * container's shape so city context fills the screen, and it shifts to clear overlays
- * (the desktop panel on the left, the header on top).
+ * container's shape and shifts to clear overlays (the desktop panel on the left, the header on top).
  */
-export function useMapFrame(ref: RefObject<HTMLElement | null>, inset: { top: number; left: number; bottom: number; bottomRatio?: number }) {
+export function useMapFrame(
+  ref: RefObject<HTMLElement | null>,
+  inset: { top: number; left: number; bottom: number; bottomRatio?: number },
+  CONTENT: MapContent,
+) {
   const [frame, setFrame] = useState<MapFrame>({ x: CONTENT.x, y: CONTENT.y, w: CONTENT.w, h: CONTENT.h });
 
   useLayoutEffect(() => {
@@ -36,7 +43,7 @@ export function useMapFrame(ref: RefObject<HTMLElement | null>, inset: { top: nu
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [ref, inset.top, inset.left, inset.bottom, inset.bottomRatio]);
+  }, [ref, inset.top, inset.left, inset.bottom, inset.bottomRatio, CONTENT.x, CONTENT.y, CONTENT.w, CONTENT.h]);
 
   return frame;
 }
