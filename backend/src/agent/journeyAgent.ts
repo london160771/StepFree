@@ -17,7 +17,7 @@ import { TOOL_NAMES, type DependencyToolResult, type DisruptionToolResult, type 
 /** Most MCP tool calls one agent request may make. The normal journey needs six; a reroute needs seven. */
 export const MAX_TOOL_CALLS = 8;
 const MAX_MODEL_TURNS = 10;
-const MODEL_TIMEOUT_MS = 30_000;
+const MODEL_TIMEOUT_MS = 70_000;
 const TOOL_TIMEOUT_MS = 20_000;
 
 export type AgentStatus =
@@ -239,6 +239,7 @@ export class JourneyAgent {
     } catch (error) {
       if (error instanceof Abort) return finish(error.status, error.message);
       if (error instanceof ModelUnavailableError || (error instanceof Error && error.message.startsWith('model timed out'))) {
+        console.error('Journey agent model error:', redact(error.message));
         return finish('AGENT_UNAVAILABLE', AGENT_UNAVAILABLE_MESSAGE);
       }
       console.error('Journey agent error:', error);
@@ -302,6 +303,9 @@ export class JourneyAgent {
     return finish(action, groundedMessage(modelText, facts, supported), view, { dependencies, disruptions });
   }
 }
+
+/** Keep API keys out of logs even if a vendor error message echoes one. */
+const redact = (text: string) => text.replace(/AIza[0-9A-Za-z_-]{20,}/g, '[redacted]').slice(0, 400);
 
 const lineDisplay = (line: string) => line.split('-')[0].replace(/^./, (c) => c.toUpperCase());
 

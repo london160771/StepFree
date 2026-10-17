@@ -34,6 +34,8 @@ export interface AgentModel {
 }
 
 export const GEMINI_MODEL = 'gemini-3.8-flash';
+const ATTEMPT_TIMEOUT_MS = 20_000;
+const ATTEMPTS = 3;
 
 export class ModelUnavailableError extends Error {}
 
@@ -56,23 +58,31 @@ export class GeminiAgentModel implements AgentModel {
     const { ai, name } = this;
     return {
       async step(signal) {
+        // Gemini occasionally stalls on a request that would normally return in a few seconds. Retry a stalled or
+        // transiently failed request (never one rejected with a 4xx, such as a bad key or an exhausted quota) with a fresh request and a short per-attempt timeout.
         let response;
-        try {
-          response = await ai.models.generateContent({
-            model: name,
-            contents,
-            config: {
-              systemInstruction: system,
-              tools: [{ functionDeclarations: declarations }],
-              toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } },
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-              maxOutputTokens: 1024,
-              abortSignal: signal,
-            },
-          });
-        } catch (error) {
-          throw new ModelUnavailableError(error instanceof Error ? error.message : 'Gemini request failed');
+        let lastError = 'Gemini request failed';
+        for (let attempt = 0; attempt < ATTEMPTS && !response; attempt++) {
+          try {
+            response = await ai.models.generateContent({
+              model: name,
+              contents,
+              config: {
+                systemInstruction: system,
+                tools: [{ functionDeclarations: declarations }],
+                toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } },
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+                maxOutputTokens: 1024,
+                abortSignal: AbortSignal.any([signal, AbortSignal.timeout(ATTEMPT_TIMEOUT_MS)]),
+              },
+            });
+          } catch (error) {
+            lastError = error instanceof Error ? error.message : lastError;
+            // 4xx (invalid request or key, quota exhausted) will not succeed on retry.
+            if (signal.aborted || /4\d\d/.test(lastError)) break;
+          }
         }
+        if (!response) throw new ModelUnavailableError(lastError);
         const content = response.candidates?.[0]?.content;
         if (!content) throw new ModelUnavailableError('Gemini returned no content');
         // The model's own turn goes back into the history unchanged (Gemini needs its thought signatures).
