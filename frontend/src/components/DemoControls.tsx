@@ -14,7 +14,7 @@ const describeDisruption = (d: Pick<DemoDisruptionInfo, 'label' | 'closed'>) => 
 export function RunJudgeDemoButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button type="button" className="btn-primary" onClick={onClick} disabled={disabled} data-testid="run-judge-demo">
-      Run Judge Demo
+      Run Demo
     </button>
   );
 }

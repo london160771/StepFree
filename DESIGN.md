@@ -60,7 +60,7 @@ Below the route result, a compact, collapsed-by-default disclosure titled **How 
 
 Demo Mode is the primary experience, for anyone anywhere. It never asks for location.
 
-1. The user selects **Demo**. Beside the From / To pickers (which stay available for other journeys) a prominent **Run Judge Demo** button sets Victoria → London Bridge, clears any simulated event and runs the healthy journey.
+1. The user selects **Demo**. Beside the From / To pickers (which stay available for other journeys) a prominent **Run Demo** button sets Victoria → London Bridge, clears any simulated event and runs the healthy journey.
 2. The route is drawn over the station graph, with Route Health **Clear**, Plan B, **Why this route?** and **How StepFree decided**. No disruption is triggered automatically.
 3. A compact **Simulate disruption** control follows: a select with exactly three options (**Lift outage**, **Station closure**, **Line disruption**, each with what it affects) and a **Simulate** button. It is labelled as a Demo Mode event, not a real TfL disruption.
 4. On activation, a banner reads **Simulated disruption: Green Park Lift 2 unavailable** (or **Green Park station closed**, or **Jubilee line unavailable**). Affected stations pulse red on the map: the station for a lift or station event, the stations the journey rides that line through for a line event.

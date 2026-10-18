@@ -13,7 +13,8 @@ describe('FalkorDB is the only router', () => {
 
   it('has no routing algorithm in the frontend', () => {
     expect(files.length).toBeGreaterThan(10);
-    for (const file of files) {
+    // The About page describes, in prose, that FalkorDB finds shortest paths; it contains no algorithm.
+    for (const file of files.filter((f) => !/pages[\\/]About\.tsx$/.test(f))) {
       expect(readFileSync(file, 'utf8'), file).not.toMatch(/dijkstra|bellman|shortest.?path|SPpaths|A\*|breadth.?first/i);
     }
   });

@@ -143,7 +143,7 @@ describe('The agent decides what each simulated disruption means', () => {
   };
   const tools = (res: any) => res.trace.map((t: any) => t.tool);
 
-  it('Run Judge Demo: the healthy journey, with Route Health Clear and Plan B, in 4 calls and no location', async () => {
+  it('Run Demo: the healthy journey, with Route Health Clear and Plan B, in 4 calls and no location', async () => {
     const { first } = await boot('Victoria', 'London Bridge');
     expect(first.status).toBe('ROUTE_SELECTED');
     expect(first.route.route.totalMinutes).toBe(35);

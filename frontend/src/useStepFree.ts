@@ -140,7 +140,7 @@ export function useStepFree() {
     }
   };
 
-  /** Run Judge Demo: the healthy Victoria to London Bridge journey, with no disruption and no location. */
+  /** Run Demo: the healthy Victoria to London Bridge journey, with no disruption and no location. */
   const runJudgeDemo = () => {
     clearRoute();
     setFromState('VIC');

@@ -11,10 +11,10 @@ const options: DemoDisruptionInfo[] = [
   { kind: 'LINE', id: 'LINE:jubilee', label: 'Jubilee line', closed: false, stationId: null, line: 'jubilee', simulated: true },
 ];
 
-describe('Run Judge Demo', () => {
+describe('Run Demo', () => {
   it('is one obvious button', () => {
     const html = renderToStaticMarkup(<RunJudgeDemoButton onClick={() => undefined} />);
-    expect(html).toContain('Run Judge Demo');
+    expect(html).toContain('Run Demo');
     expect(html).toContain('data-testid="run-judge-demo"');
     expect(html).toContain('btn-primary');
   });
@@ -24,7 +24,7 @@ describe('Run Judge Demo', () => {
     const start = hook.indexOf('const runJudgeDemo');
     const end = hook.indexOf('const resetDemo');
     expect(start).toBeGreaterThan(-1);
-    const demoPath = hook.slice(start, end) + hook.slice(hook.indexOf('const findRoute'), hook.indexOf('/** Run Judge Demo'));
+    const demoPath = hook.slice(start, end) + hook.slice(hook.indexOf('const findRoute'), hook.indexOf('/** Run Demo'));
     expect(demoPath).not.toMatch(/geolocation|getCurrentPosition|allowLocation/);
     // Location is requested in exactly one place, and only after the user chooses Live Mode.
     expect(hook.match(/navigator\.geolocation\.getCurrentPosition/g)).toHaveLength(1);
@@ -42,7 +42,7 @@ describe('Simulate disruption', () => {
     expect(html).toContain('Station closure · Green Park station');
     expect(html).toContain('Line disruption · Jubilee line');
     expect(html).toContain('>Simulate<');
-    expect(html).not.toMatch(/Run Judge Demo|Plan B/);
+    expect(html).not.toMatch(/Run Demo|Plan B/);
   });
 
   it('disables the controls while the agent is working', () => {

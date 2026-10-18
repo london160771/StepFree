@@ -17,7 +17,7 @@ This is a proof of concept covering 17 London Underground stations: Victoria, Gr
 **Track 01 — Agents That Act on Connected Data.** StepFree is a journey agent: it uses the graph to decide and act, and shows how it decided.
 
 ```text
-Frontend (Run Judge Demo, From / To, Simulate disruption)
+Frontend (Run Demo, From / To, Simulate disruption)
   → POST /api/agent/journey
   → Agent host (backend)         Gemini (gemini-3.8-flash) picks the next tool
   → MCP client                   tools/list → the model's tool catalogue, tools/call → execution
@@ -102,7 +102,7 @@ Beside the route, the app answers three questions without making anyone read gra
 
 Demo Mode is the main way to experience StepFree, for a judge anywhere in the world. It needs **no location, no London visit and no real disruption**: it never asks the browser for location, and nothing about it is geofenced. Live Mode (below) is a London-only bonus.
 
-1. **Run Judge Demo** sets Victoria → London Bridge, clears any simulated event and runs the healthy journey through the agent: 35 min via Green Park, Route Health **Clear**, a Plan B (39 min, +4 min), **Why this route?** and **How StepFree decided**. Nothing is disrupted yet.
+1. **Run Demo** sets Victoria → London Bridge, clears any simulated event and runs the healthy journey through the agent: 35 min via Green Park, Route Health **Clear**, a Plan B (39 min, +4 min), **Why this route?** and **How StepFree decided**. Nothing is disrupted yet.
 2. **Simulate disruption** offers exactly three controlled events, each labelled as a *simulated Demo Mode event, not a real TfL disruption*. One can be active at a time:
    - **Lift outage: Green Park Lift 2** (`940GZZLUGPK-Lift-2`). 35 → 39 min via the District line and Westminster.
    - **Station closure: Green Park station.** 35 → 39 min via the District line and Westminster.
