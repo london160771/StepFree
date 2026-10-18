@@ -49,6 +49,10 @@ export function loadStyle(fetchImpl: typeof fetch = fetch): Promise<StyleSpecifi
       return response.json() as Promise<StyleSpecification>;
     })
     .then(pruneStyle)
+    .then((style) => {
+      performance.mark('stepfree:style-ready');
+      return style;
+    })
     .catch((error) => {
       styleRequest = undefined;
       throw error;

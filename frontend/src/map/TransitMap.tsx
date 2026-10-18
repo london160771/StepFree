@@ -46,16 +46,10 @@ interface Props {
    * network in, 'none' to show everything at once (no intro, or reduced motion).
    */
   entrance: 'none' | 'hidden' | 'reveal';
-  /**
-   * Ambient motion (drifting clouds, trains, repeating pulses). Off while the schematic only sits underneath the 3D
-   * map as it loads, so it costs the main thread almost nothing; on when it is the visible map.
-   */
-  ambient?: boolean;
 }
 
-export function TransitMap({ frame, positions, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey, entrance, ambient = true }: Props) {
+export function TransitMap({ frame, positions, stations, edges, route, fadingRoute, outageStationIds, userPoint, journeyKey, entrance }: Props) {
   const reduceMotion = useReducedMotion() ?? false;
-  const calm = reduceMotion || !ambient;
   const staged = entrance !== 'none' && !reduceMotion;
   const shown = entrance === 'reveal';
   const lines = useMemo(() => lineSegments(edges, positions), [edges, positions]);
@@ -128,7 +122,7 @@ export function TransitMap({ frame, positions, stations, edges, route, fadingRou
           ))}
         </motion.g>
         {/* Slow cloud shadows drifting over the city. */}
-        {!calm && entrance !== 'hidden' && (
+        {!reduceMotion && entrance !== 'hidden' && (
           <g>
             <motion.ellipse
               cy={frame.y + frame.h * 0.3}
@@ -203,7 +197,7 @@ export function TransitMap({ frame, positions, stations, edges, route, fadingRou
           ))}
         </g>
 
-        {!calm && entrance !== 'hidden' && <Trains lines={lines} dimmed={route !== null} startDelay={staged ? REVEAL.trains : 0} />}
+        {!reduceMotion && entrance !== 'hidden' && <Trains lines={lines} dimmed={route !== null} startDelay={staged ? REVEAL.trains : 0} />}
 
         {/* Old route: fades to a quiet grey dashed trace so the change stays readable. */}
         <AnimatePresence>
@@ -251,7 +245,7 @@ export function TransitMap({ frame, positions, stations, edges, route, fadingRou
                 animate={{ pathLength: 1 }}
                 transition={{ duration: reduceMotion ? 0 : drawSeconds, ease: EASE_IN_OUT }}
               />
-              {!calm && (
+              {!reduceMotion && (
                 // Slow flowing dashes show the direction of travel once the line is drawn.
                 <motion.path
                   d={toPath(points)}
@@ -283,7 +277,7 @@ export function TransitMap({ frame, positions, stations, edges, route, fadingRou
           const label = labelAnchor(id);
           return (
             <motion.g key={id} {...enter(REVEAL.stations + i * 0.06, { y: -6 }, 0.5)}>
-              {outageStationIds.includes(id) && <OutagePulse at={p} reduceMotion={calm} />}
+              {outageStationIds.includes(id) && <OutagePulse at={p} reduceMotion={reduceMotion} />}
               <circle
                 cx={p.x}
                 cy={p.y}
@@ -321,9 +315,9 @@ export function TransitMap({ frame, positions, stations, edges, route, fadingRou
         ))}
 
         {journey && (
-          <JourneyFigure key={`figure-${journeyKey}`} points={journey} reduceMotion={calm} startDelay={drawSeconds + 0.3} />
+          <JourneyFigure key={`figure-${journeyKey}`} points={journey} reduceMotion={reduceMotion} startDelay={drawSeconds + 0.3} />
         )}
-        {!journey && userPoint && <JourneyFigure key="figure-user" points={[userPoint]} reduceMotion={calm} startDelay={0} />}
+        {!journey && userPoint && <JourneyFigure key="figure-user" points={[userPoint]} reduceMotion={reduceMotion} startDelay={0} />}
       </svg>
     </div>
   );

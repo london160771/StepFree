@@ -8,7 +8,7 @@ Use soft isometric building shapes as quiet context, simple roads/transit lines,
 
 The visual language is:
 
-- **Map:** a calm 3D map of real central London (MapLibre GL JS, OpenFreeMap/OpenStreetMap tiles, extruded buildings in stone and brick tones) with the 17-station network drawn on top at real coordinates. A schematic SVG map is the offline/no-WebGL fallback.
+- **Map:** a fast, flat 2D overview of real central London (MapLibre GL JS, OpenFreeMap/OpenStreetMap tiles) showing all 17 stations and the network, which becomes a tilted 3D view with extruded buildings (stone and brick tones) around the journey only when a route fits naturally at a zoom where building data exists; a route too wide for that stays flat. Nothing is zoomed artificially and no city-wide 3D is drawn. A schematic SVG map is the offline/no-WebGL/failed-tiles fallback, never a first stage.
 - **Motion:** Framer Motion and the map camera for the intro hand-off and route changes, the station outage pulse, the user figure's small journey animation, and subtle train movement. Keep train motion restrained and non-distracting.
 - **Route:** a high-contrast line drawn over the network with clear origin/destination and transfer points.
 - **Accessibility cues:** lift icons and explicit text labels; do not communicate an outage by color alone.

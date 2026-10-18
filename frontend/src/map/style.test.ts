@@ -131,13 +131,13 @@ describe('Map startup wiring', () => {
     expect(home).toContain('loadStyle()');
   });
 
-  it('keeps the schematic map underneath until 3D is ready, and for good if 3D fails', () => {
-    expect(home).toContain('ready3d');
-    expect(home).toContain('schematicLive');
-    expect(home).toContain('(!map3d || schematicLive)');
-    // Not mounted while the intro photo is up, so it never competes with the 3D map's start-up.
-    expect(home).toMatch(/if \(stage !== 'photo'\) setSchematicLive\(true\)/);
+  it('uses the schematic map only when the real map cannot load, never as a first stage', () => {
+    expect(home).not.toContain('schematicLive');
+    expect(home).not.toContain('showSchematic');
+    expect(home).toContain('{store.network && !map3d && (');
     expect(home).toContain('setMap3d(false)');
+    // The map fades in once its flat overview has rendered.
+    expect(home).toContain('setMapShown(true)');
   });
 
   it('declares the OpenFreeMap origin early, and nothing else', () => {
