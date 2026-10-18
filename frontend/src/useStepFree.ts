@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type AgentResponse, type AgentStatus, type DemoDisruptionInfo, type DemoDisruptionKind, type LiftDisruption, type Mode, type NetworkResponse, type PlanB, type Route, type RouteHealth, type TraceEntry, type WhyThisRoute } from './api';
+import { api, type AgentResponse, type AgentStatus, type DemoDisruptionInfo, type DemoDisruptionKind, type LiftDisruption, type Mode, type NetworkResponse, type PlanB, type Route, type RouteHealth, type AgentRuntimeInfo, type TraceEntry, type WhyThisRoute } from './api';
 import { placeOnMap, schematicPositions, type Point } from './map/layout';
 
 export type Phase = 'idle' | 'finding' | 'route' | 'outage' | 'recalculating' | 'rerouted' | 'noroute';
@@ -40,6 +40,7 @@ export function useStepFree() {
   const [journeyKey, setJourneyKey] = useState('0');
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
   const [trace, setTrace] = useState<TraceEntry[]>([]);
+  const [agentRuntime, setAgentRuntime] = useState<AgentRuntimeInfo | null>(null);
   const [routeHealth, setRouteHealth] = useState<RouteHealth | null>(null);
   const [planB, setPlanB] = useState<PlanB | null>(null);
   const [why, setWhy] = useState<WhyThisRoute | null>(null);
@@ -73,6 +74,7 @@ export function useStepFree() {
     setError(null);
     setAgentMessage(null);
     setTrace([]);
+    setAgentRuntime(null);
     setRouteHealth(null);
     setPlanB(null);
     setWhy(null);
@@ -128,6 +130,7 @@ export function useStepFree() {
       setNoRouteReason(journey.noRouteReason);
       setAgentMessage(res.message);
       setTrace(res.trace);
+      setAgentRuntime(res.agent ?? null);
       setRouteHealth(res.routeHealth);
       setPlanB(res.planB);
       setWhy(res.whyThisRoute);
@@ -184,6 +187,7 @@ export function useStepFree() {
       setNoRouteReason(journey.noRouteReason);
       setAgentMessage(res.message);
       setTrace(res.trace);
+      setAgentRuntime(res.agent ?? null);
       setRouteHealth(res.routeHealth);
       setPlanB(res.planB);
       setWhy(res.whyThisRoute);
@@ -268,6 +272,7 @@ export function useStepFree() {
     noRouteReason,
     agentMessage,
     trace,
+    agentRuntime,
     routeHealth,
     planB,
     why,

@@ -27,10 +27,25 @@ export interface AgentModelRun {
   addUserText(text: string): void;
 }
 
-/** The only thing the agent needs from a language model. Swap the implementation to change vendor. */
+/** What the agent host knows about the request, for policies that do not read the goal text. Language models ignore it. */
+export interface AgentRequestContext {
+  sessionId: string;
+  mode: 'demo' | 'live';
+  /** Station names as the traveller gave them (or, on a re-check, as the session stored them). */
+  origin: string;
+  destination: string;
+  /** Set on a re-check: the selected route and the connections it requires, as the graph returned them. */
+  recheck: { routeId: string; requiredConnectionIds: string[] } | null;
+}
+
+/**
+ * The only thing the agent needs to choose its next tool. "llm" is a language model (Gemini); "deterministic" is a
+ * fixed StepFree policy that reads tool results. Both are run by the same agent host through the same MCP tools.
+ */
 export interface AgentModel {
   readonly name: string;
-  start(options: { system: string; goal: string; tools: ModelTool[] }): AgentModelRun;
+  readonly kind: 'llm' | 'deterministic';
+  start(options: { system: string; goal: string; tools: ModelTool[]; request: AgentRequestContext }): AgentModelRun;
 }
 
 export const GEMINI_MODEL = 'gemini-3.8-flash';
@@ -42,6 +57,7 @@ export class ModelUnavailableError extends Error {}
 /** Gemini through the Google GenAI SDK. The model sees only the StepFree MCP tools: no search, maps or code tools. */
 export class GeminiAgentModel implements AgentModel {
   readonly name: string;
+  readonly kind = 'llm' as const;
   private readonly ai: GoogleGenAI;
 
   constructor(apiKey: string, model = GEMINI_MODEL) {

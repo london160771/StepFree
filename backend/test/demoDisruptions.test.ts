@@ -128,7 +128,7 @@ describe('Graph effects of each scenario on Victoria -> London Bridge (computed 
 
 describe('The agent decides what each simulated disruption means', () => {
   async function boot(origin: string, destination: string): Promise<{ runtime: AgentRuntime; app: ReturnType<typeof createApp>; first: any }> {
-    const runtime = createAgentRuntime({ routing, liveDisruptions: noLive, model: policyModel({ origin, destination }) });
+    const runtime = createAgentRuntime({ routing, liveDisruptions: noLive, demoModel: policyModel({ origin, destination }), liveModel: null });
     const app = createApp({ routing, liveDisruptions: noLive, agent: runtime });
     server?.close();
     server = app.listen(0);
@@ -138,7 +138,7 @@ describe('The agent decides what each simulated disruption means', () => {
   }
   const recheck = async (ctx: { runtime: AgentRuntime; app: ReturnType<typeof createApp>; first: any }, origin: string, destination: string, demoDisruption: DemoDisruptionKind | null) => {
     const routeId = ctx.runtime.state.sessions.get(ctx.first.sessionId)!.currentRouteId!;
-    ctx.runtime.agent['deps'].model = policyModel({ origin, destination, recheckRouteId: routeId });
+    ctx.runtime.agent['deps'].models.demo = ctx.runtime.agent['deps'].models.live = policyModel({ origin, destination, recheckRouteId: routeId });
     return (await request(ctx.app).post('/api/agent/journey').send({ sessionId: ctx.first.sessionId, mode: 'demo', demoDisruption })).body;
   };
   const tools = (res: any) => res.trace.map((t: any) => t.tool);

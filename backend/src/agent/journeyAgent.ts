@@ -85,14 +85,17 @@ export interface AgentResponse {
     affectedConnectionIds: string[];
   }[];
   trace: TraceEntry[];
-  agent: { model: string; transport: 'mcp-streamable-http'; toolCalls: number; maxToolCalls: number };
+  agent: { model: string; kind: 'llm' | 'deterministic' | 'none'; transport: 'mcp-streamable-http'; toolCalls: number; maxToolCalls: number };
 }
 
 export interface JourneyAgentDeps {
   routing: RoutingGraph;
   state: AgentState;
-  /** Null when no model is configured: requests then fail honestly instead of bypassing the agent. */
-  model: AgentModel | null;
+  /**
+   * The tool-selection policy for each mode. Demo Mode always has one (the deterministic StepFree policy); Live Mode
+   * has Gemini, or null when no key is configured, and then fails honestly instead of falling back to the Demo policy.
+   */
+  models: { demo: AgentModel; live: AgentModel | null };
   mcp: { url: () => string | null; token: string };
 }
 
@@ -141,7 +144,9 @@ export class JourneyAgent {
   constructor(private readonly deps: JourneyAgentDeps) {}
 
   async run(request: AgentRequest): Promise<AgentResponse> {
-    const { routing, state, model } = this.deps;
+    const { routing, state } = this.deps;
+    // Chosen per request from the request's own mode: nothing shared is swapped, so Demo and Live requests cannot interfere.
+    const model = this.deps.models[request.mode];
     const known = request.sessionId ? state.sessions.get(request.sessionId) : undefined;
     const recheck = Boolean(known && known.originId && known.destinationId && known.mode === request.mode);
     const session: JourneySessionState = recheck
@@ -178,7 +183,7 @@ export class JourneyAgent {
       dependencies: [],
       disruptions: [],
       trace,
-      agent: { model: model?.name ?? 'none', transport: 'mcp-streamable-http', toolCalls: trace.length, maxToolCalls: MAX_TOOL_CALLS },
+      agent: { model: model?.name ?? 'none', kind: model?.kind ?? 'none', transport: 'mcp-streamable-http', toolCalls: trace.length, maxToolCalls: MAX_TOOL_CALLS },
       ...extra,
     });
 
@@ -199,7 +204,18 @@ export class JourneyAgent {
       const goal = recheck
         ? `Re-check journey session ${session.id} (${request.mode} mode) from ${originText} to ${destinationText}. The selected route is routeId ${startRouteId} (${current?.route.totalMinutes} min) and it requires these connections: ${JSON.stringify(ev.dependencies.get(startRouteId!)?.requiredConnectionIds ?? [])}. The accessibility situation may have changed. Decide whether that route is still usable and act on what the tools show.`
         : `Find a currently usable step-free journey from ${originText} to ${destinationText}. Journey session id: ${session.id}. Mode: ${request.mode}. Use only StepFree tools and graph evidence.`;
-      const modelRun = model.start({ system: SYSTEM_PROMPT, goal, tools });
+      const modelRun = model.start({
+        system: SYSTEM_PROMPT,
+        goal,
+        tools,
+        request: {
+          sessionId: session.id,
+          mode: request.mode,
+          origin: originText,
+          destination: destinationText,
+          recheck: current && startRouteId ? { routeId: startRouteId, requiredConnectionIds: ev.dependencies.get(startRouteId)?.requiredConnectionIds ?? [] } : null,
+        },
+      });
 
       const expected = (text: string, fixed: string | null) => (fixed ? fixed : ev.resolvedIds.get(stationKey(text)) ?? null);
       const seen = new Set<string>();

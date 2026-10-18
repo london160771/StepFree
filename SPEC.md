@@ -2,7 +2,7 @@
 
 ## Hackathon track and agent
 
-StepFree enters **Track 01 — Agents That Act on Connected Data**. It is a journey agent: Gemini (`gemini-3.8-flash`) chooses among a fixed catalogue of MCP tools; the MCP server runs human-written, parameterised Cypher against FalkorDB and reads TfL lift disruptions; the agent host enforces what the evidence allows and returns a grounded decision with a visible action trace. FalkorDB remains the routing brain. The model never writes Cypher, never computes a route and never sees raw location.
+StepFree enters **Track 01 — Agents That Act on Connected Data**. It is a journey agent that chooses among a fixed catalogue of MCP tools: in Live Mode Gemini (`gemini-3.8-flash`) chooses; in Demo Mode a deterministic StepFree tool policy chooses (so the repeatable judge experience needs no AI quota, and it is never presented as Gemini); the MCP server runs human-written, parameterised Cypher against FalkorDB and reads TfL lift disruptions; the agent host enforces what the evidence allows and returns a grounded decision with a visible action trace. FalkorDB remains the routing brain. The model never writes Cypher, never computes a route and never sees raw location.
 
 ## Product
 
@@ -117,7 +117,7 @@ Use only this agreed stack:
 | PWA | `vite-plugin-pwa` |
 | Backend | Node.js, Express, TypeScript |
 | Graph and routing | FalkorDB with the official FalkorDB Node client |
-| Agent | Google Gemini (`gemini-3.8-flash`) through `@google/genai`, behind an `AgentModel` interface; MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, `/client`, `/node`) over Streamable HTTP; Zod for tool arguments |
+| Agent | Live Mode: Google Gemini (`gemini-3.8-flash`) through `@google/genai`; Demo Mode: the deterministic `stepfree-demo-policy`; both behind the `AgentModel` interface and run by the same agent host; MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, `/client`, `/node`) over Streamable HTTP; Zod for tool arguments |
 | Transit data | TfL APIs and official topology data |
 | Tests | Vitest and Supertest |
 | Deployment | Frontend on Vercel; backend on Render; FalkorDB Cloud if available, otherwise self-hosted/Docker-compatible FalkorDB |
@@ -134,5 +134,5 @@ Milestones are deliverables and acceptance evidence, not time estimates.
 | 3 — Live Mode and location | Live Mode requests location only on entry; on permission, it places the animated user figure and maps the user to the nearest supported station within the 17-station graph; on denial, Live Mode does not start and Demo Mode remains available. It uses real TfL lift disruption data, requires internet access for current disruption data, and communicates that Live Mode is London-only. |
 | 4 — Animated interface | The phone-first map, route states, lift states, user figure, subtle train movement, and outage transition match `DESIGN.md`; desktop adapts the same map as a larger transit view. |
 | 5 — PWA and guide | The frontend is installable as a PWA, the iPhone/Android Install Guide page is complete, the app shell can be available offline, and Live Mode clearly requires internet for current TfL disruption data. |
-| Agent alignment | Gemini → MCP → FalkorDB: six fixed tools, bounded loop, evidence guards, grounded copy, journey decision memory in FalkorDB, and the **How StepFree decided** trace; Demo (35 → 39 min), Lift 2 outage and unknown-station scenarios pass through the agent. |
+| Agent alignment | Live: Gemini → MCP → FalkorDB; Demo: deterministic policy → MCP → FalkorDB. Seven fixed tools, bounded loop, evidence guards, grounded copy, journey decision memory in FalkorDB, and the **How StepFree decided** trace; Demo (35 → 39 min), Lift 2 outage and unknown-station scenarios pass through the agent. |
 | 6 — Verification and demo readiness | Vitest and Supertest cover the core routing/API behavior; the safety note, three pages, credits, and route demo are checked; the frontend/backend/FalkorDB deployment targets are prepared for the demonstration. |

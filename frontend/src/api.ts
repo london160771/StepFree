@@ -151,6 +151,14 @@ export interface WhyThisRoute {
   reasons: string[];
 }
 
+export interface AgentRuntimeInfo {
+  model: string;
+  kind: 'deterministic' | 'llm' | 'none';
+  transport: 'mcp-streamable-http';
+  toolCalls: number;
+  maxToolCalls: number;
+}
+
 export interface AgentResponse {
   sessionId: string;
   status: AgentStatus;
@@ -173,6 +181,8 @@ export interface AgentResponse {
     affectedConnectionIds: string[];
   }[];
   trace: TraceEntry[];
+  /** What chose the tools: a deterministic StepFree policy (Demo Mode) or a language model (Live Mode). */
+  agent: AgentRuntimeInfo;
 }
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || 'http://localhost:4000';

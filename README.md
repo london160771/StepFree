@@ -12,8 +12,8 @@ StepFree is a proof of concept covering **17 London Underground stations**: Vict
 - **Plan B** — a backup step-free route found before anything breaks, shown as a preview. It is not a reroute.
 - **Why this route?** — short plain-language reasons, assembled deterministically from the same tool results.
 - **How StepFree decided** — the safe tool-call trace (tools, arguments, results, timings), never the model’s private reasoning.
-- **Demo Mode** — the universal judge experience: no location, no London visit, no real disruption needed. Three simulated events: lift outage, station closure, line disruption.
-- **Live Mode** — London only, needs location permission. Uses the nearest supported station and real TfL lift-disruption data.
+- **Demo Mode** — the universal judge experience: no location, no London visit, no real disruption needed. Three simulated events: lift outage, station closure, line disruption. A deterministic agent policy runs it, so it needs no Gemini quota.
+- **Live Mode** — London only, needs location permission. Uses the nearest supported station and real TfL lift-disruption data, with Gemini 3.8 Flash as the agent.
 - **Installable PWA** — an Install page explains adding it to the home screen on iPhone and Android.
 
 ### How the map behaves
@@ -25,14 +25,25 @@ MapLibre GL JS with the [OpenFreeMap](https://openfreemap.org) Positron style (n
 - **TfL tells StepFree what changed.** Lift disruptions come from TfL’s lift-disruption feed. Stations, platforms, lifts and step-free paths come from TfL’s official detailed station topology; ride times come from TfL timetable data.
 - **FalkorDB understands the connected network.** Stations have street and line-specific access nodes, linked by `RIDE` relationships (timetable minutes) and `STEP_FREE_TRANSFER` relationships (lifts and level paths from TfL topology).
 - **FalkorDB finds the valid step-free route.** Routes come from FalkorDB’s weighted shortest path (`algo.SPpaths`). When something is unavailable, the connections that depend on it are removed (`UNAVAILABLE_TRANSFER`, `UNAVAILABLE_RIDE`) in a copy of the graph and FalkorDB returns the next valid route.
-- **Gemini decides which tool to call; it never routes.** The model does not compute routes or write queries.
+- **An agent decides which tool to call; it never routes.** In Live Mode that agent is Gemini; in Demo Mode it is a deterministic StepFree policy (below). Neither computes routes or writes queries.
 
 ### Agent architecture (Track 01 — Agents That Act on Connected Data)
+
+StepFree has one agent host and one set of tools. Only the tool-selection policy depends on the mode, and the app says which one ran (in **How StepFree decided**):
+
+| | Demo Mode | Live Mode |
+|---|---|---|
+| Chooses the next tool | **Deterministic StepFree policy** (`stepfree-demo-policy`, `backend/src/agent/demoPolicyModel.ts`) | **Gemini 3.8 Flash** (`gemini-3.8-flash`) |
+| Gemini requests | None, whatever the configuration | Yes (needs `GEMINI_API_KEY`) |
+| Tools, MCP, FalkorDB, guards, trace | Identical | Identical |
+| If the agent is unavailable | Always available | “Journey agent is temporarily unavailable.” (no silent fallback to the Demo policy) |
+
+Why: the Demo is the repeatable experience that judges and visitors run again and again, and a free Gemini quota can run out. A deterministic policy keeps it reliable, fast and quota-independent, and it is disclosed rather than disguised. It is not Gemini and is never called Gemini. It chooses from the same seven validated MCP tools by reading the previous tool results (plan, check disruptions, reroute if something the route needs is unavailable, find Plan B, record). It contains no routes, times, stations or lifts: FalkorDB computes every route, backup and dependency, and the policy accepts whatever it returns.
 
 ```text
 Frontend (Run Demo, From / To, Simulate disruption)
   → POST /api/agent/journey
-  → Agent host (backend)         Gemini 3.8 Flash (gemini-3.8-flash) picks the next tool
+  → Agent host (backend)         Demo: deterministic policy · Live: Gemini 3.8 Flash. Picks the next tool
   → MCP client                   tools/list → tool catalogue, tools/call → execution
   → StepFree MCP server (/mcp)   seven fixed tools, Streamable HTTP
   → FalkorDB + TfL lift feed     fixed, parameterised Cypher; algo.SPpaths
@@ -95,7 +106,7 @@ Requirements: Node.js 20+ and a running FalkorDB on `localhost:6379`.
    ```bash
    cd backend
    npm install
-   cp .env.example .env     # add GEMINI_API_KEY for the journey agent
+   cp .env.example .env     # add GEMINI_API_KEY to enable Live Mode (Demo Mode needs no key)
    npm run dev
    ```
 
@@ -113,7 +124,7 @@ Rebuild the graph data from TfL’s published files with `npm run topology` in `
 ## Tests
 
 ```bash
-cd backend && npm test && npm run typecheck && npm run build    # needs FalkorDB running; uses a deterministic fake model, never real Gemini
+cd backend && npm test && npm run typecheck && npm run build    # needs FalkorDB running; makes no real Gemini request (Demo uses the deterministic policy; tests use doubles for Live)
 cd frontend && npm test && npm run typecheck && npm run lint && npm run build
 ```
 
@@ -124,7 +135,7 @@ cd frontend && npm test && npm run typecheck && npm run lint && npm run build
 | Variable | Required | Secret | Purpose |
 |---|---|---|---|
 | `FALKORDB_URL` | Yes in production (defaults to `redis://127.0.0.1:6379`) | Yes (may contain credentials) | FalkorDB connection, `redis://` or `rediss://` |
-| `GEMINI_API_KEY` | Yes for the journey agent | Yes | Gemini key. Backend only. Without it the agent reports it is unavailable. |
+| `GEMINI_API_KEY` | Only for Live Mode | Yes | Gemini key. Backend only. Without it Live Mode reports “Journey agent is temporarily unavailable.”; Demo Mode is unaffected. |
 | `TFL_APP_KEY` | Optional, recommended | Yes | TfL Unified API key. Without it TfL’s lower anonymous rate limit applies. |
 | `CORS_ORIGIN` | Yes in production (defaults to `http://localhost:5173`) | No | The one allowed frontend origin, no trailing slash |
 | `PORT` | No | No | Defaults to 4000. Render supplies it: do not set it there. |
@@ -149,7 +160,7 @@ StepFree deploys as three parts: a FalkorDB database, the backend on Render and 
 | Build Command | `npm ci --include=dev && npm run build` |
 | Start Command | `npm start` |
 | Health Check Path | `/api/health` |
-| Environment | `FALKORDB_URL`, `GEMINI_API_KEY`, `TFL_APP_KEY` (optional), `CORS_ORIGIN` |
+| Environment | `FALKORDB_URL`, `GEMINI_API_KEY` (Live Mode only), `TFL_APP_KEY` (optional), `CORS_ORIGIN` |
 
 **3. Vercel (frontend).** Import the same repository.
 
@@ -167,7 +178,7 @@ StepFree deploys as three parts: a FalkorDB database, the backend on Render and 
 
 1. `https://<render-host>/api/health` returns `{"ok":true}`; `/api/network` returns 17 stations.
 2. The Vercel site loads; Map, Install and About pages open; the map shows the 17 stations.
-3. **Run Demo**: Victoria → London Bridge, 35 min, Route Health Clear, Plan B 39 min.
+3. **Run Demo** (the response's `agent.model` reads `stepfree-demo-policy`, so it uses no Gemini quota): Victoria → London Bridge, 35 min, Route Health Clear, Plan B 39 min.
 4. **Simulate disruption → Lift outage**: 39 min, Rerouted, Plan B 52 min. **Reset demo**, then **Station closure**: 39 min, Rerouted. **Reset demo**, then **Line disruption → Jubilee**: 52 min, Rerouted, Plan B 59 min.
 5. Open **How StepFree decided** and check the tool trace appears.
 6. On a phone: the page loads, the 2D overview is quick, a route displays, the app can be installed.
@@ -176,7 +187,9 @@ StepFree deploys as three parts: a FalkorDB database, the backend on Render and 
 ## AI use disclosure
 
 - **Coding assistant:** this repository was built with Claude Code (Anthropic’s Claude models, Opus 5.5 and Sonnet 5.5) directed by the project owner, who reviews and runs the work. Commits made with it carry a `Co-Authored-By` trailer.
-- **Runtime model:** at run time the journey agent calls Google’s Gemini (`gemini-3.8-flash`, `@google/genai`) from the backend. It only chooses among the StepFree MCP tools and words the result; it does not compute routes or write queries. The coding assistant is not part of the running product.
+- **Runtime model (Live Mode only):** in Live Mode the journey agent calls Google’s Gemini (`gemini-3.8-flash`, `@google/genai`) from the backend. It only chooses among the StepFree MCP tools; it does not compute routes or write queries.
+- **Demo Mode uses no AI model:** a deterministic StepFree policy chooses the tools, through the same MCP server, FalkorDB graph and guards. It is not Gemini and is not presented as Gemini.
+- The coding assistant is not part of the running product.
 
 ## Project layout
 
@@ -189,7 +202,7 @@ backend/    Node.js + Express + TypeScript API, FalkorDB routing, MCP server and
 
 ## Credits
 
-Graph routing by [FalkorDB](https://www.falkordb.com/). Agent tools served over the [Model Context Protocol](https://modelcontextprotocol.io) (TypeScript SDK v2); tool selection by Google Gemini. Transit, station topology and lift data from Transport for London. Powered by TfL Open Data. StepFree is an independent project and is not endorsed by TfL.
+Graph routing by [FalkorDB](https://www.falkordb.com/). Agent tools served over the [Model Context Protocol](https://modelcontextprotocol.io) (TypeScript SDK v2); tool selection by Google Gemini in Live Mode. Transit, station topology and lift data from Transport for London. Powered by TfL Open Data. StepFree is an independent project and is not endorsed by TfL.
 
 Map: [MapLibre GL JS](https://maplibre.org/) with the [OpenFreeMap](https://openfreemap.org) Positron style and vector tiles; © OpenMapTiles, data from [OpenStreetMap](https://www.openstreetmap.org/copyright) (© OpenStreetMap contributors, ODbL).
 

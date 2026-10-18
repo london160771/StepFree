@@ -28,7 +28,7 @@ Do not combine the frontend and backend into one application folder.
 
 - Frontend: React, Vite, TypeScript, Tailwind CSS, Framer Motion, SVG, `vite-plugin-pwa`, and MapLibre GL JS with OpenFreeMap vector tiles (no API key) for the 3D London map, approved by the project owner. The SVG map remains the offline/no-WebGL fallback.
 - Backend: Node.js, Express, TypeScript, FalkorDB, the official FalkorDB Node client, and TfL APIs/topology data.
-- Agent (Track 01 — Agents That Act on Connected Data): Google Gemini (`gemini-3.8-flash`) through `@google/genai`, isolated behind the `AgentModel` interface; the MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, `/client`, `/node`) with Streamable HTTP at `/mcp`; Zod for tool arguments. Nothing else: no LangChain, LlamaIndex, CrewAI, AutoGen or second agent framework.
+- Agent (Track 01 — Agents That Act on Connected Data): Live Mode uses Google Gemini (`gemini-3.8-flash`) through `@google/genai`; Demo Mode uses the deterministic `stepfree-demo-policy`. Both sit behind the `AgentModel` interface; the MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, `/client`, `/node`) with Streamable HTTP at `/mcp`; Zod for tool arguments. Nothing else: no LangChain, LlamaIndex, CrewAI, AutoGen or second agent framework.
 - Tests: Vitest and Supertest.
 - Deployment targets: Vercel for the frontend, Render for the backend, and FalkorDB Cloud when available; otherwise use a self-hosted or Docker-compatible FalkorDB deployment.
 - Do not introduce Supabase, MongoDB, Next.js, another graph database, or an unnecessary supporting service.
@@ -45,13 +45,13 @@ Do not combine the frontend and backend into one application folder.
 
 ## Agent rules
 
-- Runtime path: Gemini chooses a tool, the backend agent host executes it through a real MCP client against the StepFree MCP server, FalkorDB/TfL answer, the host enforces the evidence guards, and a grounded decision plus action trace go to the UI. Do not fake MCP with direct function calls.
+- Runtime path: the mode's agent (Gemini in Live Mode, the deterministic Demo policy in Demo Mode; never Gemini for Demo) chooses a tool, the backend agent host executes it through a real MCP client against the StepFree MCP server, FalkorDB/TfL answer, the host enforces the evidence guards, and a grounded decision plus action trace go to the UI. Do not fake MCP with direct function calls.
 - The fixed tool catalogue is `resolve_station`, `plan_step_free_journey`, `inspect_route_dependencies`, `get_journey_disruptions`, `find_alternative_route`, `find_backup_route` (Plan B), `record_journey_decision`. Add no tool that accepts query text, code, files, shell or arbitrary HTTP. The model never writes Cypher; every query is fixed, human-written and parameterised, with arguments validated by Zod and then against the graph.
 - FalkorDB stays the routing brain; the model does not compute routes and the browser does not decide to reroute. The frontend only reports state (for example `demoDisruption`) and renders what the agent decided.
 - Demo Mode is the universal judge experience: it never requests location and has no geographic guard. It offers three simulated events (lift, station, line) built on one generic model (a connection id that is unavailable: LiftUniqueId, `STATION:x`, `LINE:x`). The frontend only reports which event was activated; the agent decides from tool evidence whether the journey is affected; FalkorDB computes every replacement route. Never present station or line events as live TfL data. `get_journey_disruptions` (formerly `get_accessibility_disruptions`) is the single disruption tool.
 - Plan B (`find_backup_route`), Route Health and Why this route? are computed by the backend from FalkorDB and tool evidence only: no hard-coded backup, no model-written health or explanation, no extra Gemini call. Plan B is a preview, distinct from a reroute.
 - Never expose `GEMINI_API_KEY` to the frontend or commit it. Never send raw GPS to the model; Live Mode passes only the nearest supported station.
-- Do not silently bypass the agent when the model is down: say "Journey agent is temporarily unavailable." Deterministic fake models are for automated tests only.
+- Do not silently bypass the agent when the model is down: say "Journey agent is temporarily unavailable." The deterministic Demo policy is a disclosed StepFree policy for Demo Mode only, never labelled Gemini, and Live Mode never silently falls back to it. Test doubles that script misbehaviour are for automated tests only.
 - Keep `README.md` accurate about AI use: Claude Code (Anthropic) as the coding assistant, Gemini as the separate runtime model.
 
 ## Project storytelling

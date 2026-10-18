@@ -134,6 +134,15 @@ describe('About page: technology and vision', () => {
     expect(text).toContain('never shows the model’s private reasoning');
   });
 
+  it('is clear that Demo Mode runs a deterministic policy and Live Mode runs Gemini, through the same MCP tools and FalkorDB', () => {
+    expect(text).toContain('Demo Mode uses a deterministic agent policy');
+    expect(text).toContain('does not depend on external AI quota');
+    expect(text).toContain('chooses from and executes the same validated MCP tool set, while FalkorDB computes every route');
+    expect(text).toContain('Live Mode uses Gemini 3.8 Flash to choose among those validated StepFree MCP tools');
+    expect(text).not.toMatch(/Demo Mode (is|uses|runs)[^.]*Gemini/i);
+    expect(text).not.toMatch(/fake|mock/i);
+  });
+
   it('lists the real stack', () => {
     for (const tech of ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'Framer Motion', 'MapLibre GL JS', 'OpenFreeMap', 'OpenStreetMap', 'Node.js', 'Express', 'Progressive Web App']) expect(text, tech).toContain(tech);
   });

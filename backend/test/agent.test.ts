@@ -9,6 +9,7 @@ import { claimsAreSupported, deterministicMessage } from '../src/agent/grounding
 import { computeRouteHealth } from '../src/agent/insights.js';
 import { MAX_TOOL_CALLS } from '../src/agent/journeyAgent.js';
 import { TOOL_NAMES } from '../src/agent/toolbox.js';
+import type { AgentModel } from '../src/agent/model.js';
 import { createApp } from '../src/app.js';
 import { RoutingGraph } from '../src/graph/routing.js';
 import { loadNetwork } from '../src/network/load.js';
@@ -32,8 +33,9 @@ afterAll(async () => {
 });
 
 /** A real app with the real /mcp endpoint, listening on a free port so the agent host connects over HTTP. */
-async function boot(model: Parameters<typeof createAgentRuntime>[0]['model']): Promise<{ runtime: AgentRuntime; app: ReturnType<typeof createApp> }> {
-  const runtime = createAgentRuntime({ routing, liveDisruptions: () => liveDisruptions(), model });
+async function boot(model: AgentModel | null): Promise<{ runtime: AgentRuntime; app: ReturnType<typeof createApp> }> {
+  // The test model stands in for the tool-selecting policy in both modes. With null: the production setup without a Gemini key.
+  const runtime = createAgentRuntime({ routing, liveDisruptions: () => liveDisruptions(), liveModel: model, ...(model ? { demoModel: model } : {}) });
   const app = createApp({ routing, liveDisruptions: () => liveDisruptions(), agent: runtime });
   server?.close();
   server = app.listen(0);
@@ -158,7 +160,7 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
     const started = await journey(first.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
     const routeId = first.runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
     // The user triggers the outage; the same session is re-evaluated by the agent.
-    first.runtime.agent['deps'].model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
+    first.runtime.agent['deps'].models.demo = first.runtime.agent['deps'].models.live = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
     const res = await journey(first.app, { sessionId: started.body.sessionId, mode: 'demo', demoDisruption: 'LIFT' });
     expect(res.status).toBe(200);
     expect(res.body.sessionId).toBe(started.body.sessionId);
@@ -183,7 +185,7 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
 
     // Clearing the outage: the agent plans again and returns to the faster route.
     const afterRouteId = first.runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
-    first.runtime.agent['deps'].model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: afterRouteId });
+    first.runtime.agent['deps'].models.demo = first.runtime.agent['deps'].models.live = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: afterRouteId });
     const reset = await journey(first.app, { sessionId: started.body.sessionId, mode: 'demo', demoDisruption: null });
     expect(reset.body.status).toBe('ROUTE_SELECTED');
     expect(reset.body.route.route.totalMinutes).toBe(35);
@@ -201,7 +203,7 @@ describe('Journey agent: model chooses tools, MCP executes them, FalkorDB decide
       expect(started.body.status).toBe('ROUTE_SELECTED');
       expect(started.body.route.unavailable.lifts).toHaveLength(1);
       const routeId = runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
-      runtime.agent['deps'].model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
+      runtime.agent['deps'].models.demo = runtime.agent['deps'].models.live = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
       const again = await journey(app, { sessionId: started.body.sessionId, mode: 'live' });
       expect(again.body.status).toBe('ROUTE_RETAINED');
       expect(again.body.message).toMatch(/^Your current step-free route is still usable.* It takes about 35 minutes\.$/);
@@ -258,7 +260,7 @@ describe('Agent safety invariants', () => {
     const planned = await runtime.toolbox.planStepFreeJourney({ origin: 'Victoria', destination: 'London Bridge' });
     if (planned.status !== 'ROUTE_FOUND') throw new Error('expected a route');
     const record = (action: string, extra: object = {}) => ({ name: 'record_journey_decision', args: { sessionId: sid, origin: 'Victoria', destination: 'London Bridge', action, reasonCode: 'TEST', routeSummary: { routeId: planned.route.routeId }, ...extra } });
-    runtime.agent['deps'].model = scriptedModel([
+    runtime.agent['deps'].models.demo = runtime.agent['deps'].models.live = scriptedModel([
       { name: 'resolve_station', args: { station: 'Victoria' } },
       { name: 'resolve_station', args: { station: 'London Bridge' } },
       plan,
@@ -290,9 +292,9 @@ describe('Agent safety invariants', () => {
     expect(res.body.message).toMatch(/too many steps/);
   });
 
-  it('refuses to bypass the agent: no Gemini key gives an honest unavailable state', async () => {
+  it('refuses to bypass the agent: Live Mode without a Gemini key gives an honest unavailable state, never the Demo policy', async () => {
     const { app } = await boot(null);
-    const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    const res = await journey(app, { origin: 'Victoria', destination: 'London Bridge', mode: 'live' });
     expect(res.status).toBe(503);
     expect(res.body).toMatchObject({ status: 'AGENT_UNAVAILABLE', message: 'Journey agent is temporarily unavailable.', route: null });
   });
@@ -300,6 +302,7 @@ describe('Agent safety invariants', () => {
   it('reports the model being down as unavailable, not as a route', async () => {
     const { app } = await boot({
       name: 'broken',
+      kind: 'llm',
       start: () => ({
         async step() {
           const { ModelUnavailableError } = await import('../src/agent/model.js');
@@ -404,7 +407,7 @@ describe('Efficiency: the common flows use few tool calls', () => {
     const started = await journey(first.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
     const routeId = first.runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
     const model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
-    first.runtime.agent['deps'].model = model;
+    first.runtime.agent['deps'].models.demo = first.runtime.agent['deps'].models.live = model;
     const res = await journey(first.app, { sessionId: started.body.sessionId, mode: 'demo', demoDisruption: 'LIFT' });
     expect(tools(res)).toEqual(['get_journey_disruptions', 'find_alternative_route', 'find_backup_route', 'record_journey_decision']);
     expect(res.body.status).toBe('REROUTED');
@@ -561,7 +564,7 @@ describe('Plan B, Route Health and Why this route', () => {
     const started = await journey(first.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
     expect(started.body.planB.durationMinutes).toBe(39);
     const routeId = first.runtime.state.sessions.get(started.body.sessionId)!.currentRouteId!;
-    first.runtime.agent['deps'].model = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
+    first.runtime.agent['deps'].models.demo = first.runtime.agent['deps'].models.live = policyModel({ origin: 'Victoria', destination: 'London Bridge', recheckRouteId: routeId });
     const res = await journey(first.app, { sessionId: started.body.sessionId, mode: 'demo', demoDisruption: 'LIFT' });
     expect(res.body.status).toBe('REROUTED');
     expect(res.body.routeHealth).toEqual({ status: 'REROUTED', affectedConnectionIds: [LIFT_2] });
@@ -583,7 +586,7 @@ describe('Plan B, Route Health and Why this route', () => {
 
   it('a decision cannot be recorded for a route whose Plan B was never looked up', async () => {
     const { app, runtime } = await boot(null);
-    runtime.agent['deps'].model = scriptedModel([
+    runtime.agent['deps'].models.demo = runtime.agent['deps'].models.live = scriptedModel([
       { name: 'plan_step_free_journey', args: { origin: 'Victoria', destination: 'London Bridge' } },
       { name: 'get_journey_disruptions', args: { mode: 'demo' } },
       { name: 'record_journey_decision', args: { sessionId: 'abcdefgh', origin: 'Victoria', destination: 'London Bridge', action: 'ROUTE_SELECTED', reasonCode: 'NO_DISRUPTION', routeSummary: { routeId: '000000000000' } } },
@@ -609,7 +612,7 @@ describe('Plan B, Route Health and Why this route', () => {
     const unknown = await journey(app, { origin: 'Atlantis', destination: 'London Bridge', mode: 'demo' });
     expect(unknown.body).toMatchObject({ status: 'UNKNOWN_STATION', routeHealth: null, planB: null, whyThisRoute: null });
     const down = await boot(null);
-    const res = await journey(down.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'demo' });
+    const res = await journey(down.app, { origin: 'Victoria', destination: 'London Bridge', mode: 'live' });
     expect(res.body).toMatchObject({ status: 'AGENT_UNAVAILABLE', routeHealth: null, planB: null });
   });
 

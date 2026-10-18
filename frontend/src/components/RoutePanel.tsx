@@ -176,7 +176,7 @@ function Planner({ store }: { store: Store }) {
 }
 
 function PhaseContent({ store, name }: { store: Store; name: (id: string) => string }) {
-  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateDisruption, resetDemo, noRouteReason, agentMessage, trace, routeHealth, planB, why } = store;
+  const { phase, route, fadingRoute, mode, network, unavailableLifts, simulateDisruption, resetDemo, noRouteReason, agentMessage, trace, agentRuntime, routeHealth, planB, why } = store;
   const { activeDisruption, selectedKind, setSelectedKind, agentStatus } = store;
 
   if (phase === 'outage' || phase === 'recalculating') {
@@ -211,7 +211,7 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
         )}
         {trace.length > 0 && (
           <div className="mt-4">
-            <DecisionTrace trace={trace} />
+            <DecisionTrace trace={trace} agent={agentRuntime} />
           </div>
         )}
       </Notice>
@@ -234,7 +234,7 @@ function PhaseContent({ store, name }: { store: Store; name: (id: string) => str
         <RouteResult route={route} name={name} previousMinutes={phase === 'rerouted' ? fadingRoute?.totalMinutes : undefined} health={routeHealth} />
         {planB && <PlanBSection planB={planB} name={name} />}
         {why && <WhyThisRouteSection why={why} />}
-        <DecisionTrace trace={trace} />
+        <DecisionTrace trace={trace} agent={agentRuntime} />
         {mode === 'demo' && phase === 'route' && network!.demoDisruptions.length > 0 && (
           <SimulateDisruption options={network!.demoDisruptions} selected={selectedKind} onSelect={setSelectedKind} onSimulate={() => void simulateDisruption(selectedKind)} />
         )}

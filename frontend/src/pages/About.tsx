@@ -214,9 +214,22 @@ export function About() {
           <P>
             The agent does not write database queries. It chooses from a fixed set of validated StepFree tools exposed through the{' '}
             <ExternalLink href="https://modelcontextprotocol.io/">Model Context Protocol</ExternalLink> (MCP), and those tools perform controlled graph
-            operations. Gemini never connects to FalkorDB directly:
+            operations. Which agent makes the choice depends on the mode:
           </P>
-          <p className="rounded-xl bg-slate-50 px-4 py-3 text-center text-base font-medium text-slate-800">Gemini → StepFree agent host → MCP tools → FalkorDB / TfL</p>
+          <ul className="max-w-prose list-disc space-y-1.5 pl-6 text-lg text-slate-700">
+            <li>
+              <strong>Demo Mode</strong> uses a deterministic agent policy, so the repeatable judge experience does not depend on external AI quota. It still
+              chooses from and executes the same validated MCP tool set, while FalkorDB computes every route.
+            </li>
+            <li>
+              <strong>Live Mode</strong> uses Gemini 3.8 Flash to choose among those validated StepFree MCP tools.
+            </li>
+          </ul>
+          <P>In both modes the agent host runs every tool through MCP, and Gemini never connects to FalkorDB directly:</P>
+          <p className="space-y-1 rounded-xl bg-slate-50 px-4 py-3 text-center text-base font-medium text-slate-800">
+            <span className="block">Live Mode: Gemini → StepFree agent host → MCP tools → FalkorDB / TfL</span>
+            <span className="block">Demo Mode: deterministic policy → StepFree agent host → MCP tools → FalkorDB</span>
+          </p>
           <P>Today the agent can plan step-free routes, inspect the accessibility dependencies of a route, check disruptions, reroute through the graph, find a Plan B, report Route Health, record its decisions and show a safe execution trace.</P>
 
           <h3 className="mt-8 text-xl font-medium text-slate-900">Other technology</h3>
@@ -228,7 +241,7 @@ export function About() {
             </Tech>
             <Tech label="Backend">Node.js, Express, TypeScript</Tech>
             <Tech label="Agent">
-              <ExternalLink href="https://ai.google.dev/">Gemini</ExternalLink> 3.8 Flash, MCP
+              <ExternalLink href="https://ai.google.dev/">Gemini</ExternalLink> 3.8 Flash (Live Mode), a deterministic policy (Demo Mode), MCP
             </Tech>
             <Tech label="Transport data">Transport for London APIs and datasets</Tech>
             <Tech label="App">Progressive Web App (installable; Live Mode needs a connection)</Tech>
