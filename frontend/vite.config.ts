@@ -18,7 +18,7 @@ export default defineConfig({
         name: 'StepFree',
         short_name: 'StepFree',
         description:
-          'Step-free routes across seven central London stations, rerouted by FalkorDB when a lift is unavailable.',
+          'An accessibility journey agent for 17 London Underground stations, with step-free routing, disruption-aware rerouting and Plan B.',
         lang: 'en-GB',
         start_url: '/',
         scope: '/',
