@@ -8,11 +8,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphEdge, Route, Station } from '../api';
 import { distanceKm, easeInOut, journeySecondsGeo, pointAlong, routeDrawSecondsGeo, type LngLat } from './geo';
 import { LINE_COLORS } from './layout';
+import { loadStyle } from './style';
 
 maplibregl.setWorkerUrl(workerUrl);
 
-/** OpenFreeMap's calm Positron style: OpenStreetMap vector tiles, no API key. */
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 const ROUTE_COLOR = '#111827';
 
 /**
@@ -22,6 +21,10 @@ const ROUTE_COLOR = '#111827';
  */
 const BUILDING_ZOOM = 13;
 const MAX_UI_SCALE = 1.75;
+/** Buildings shorter than this (metres, by render height; unknown heights count as 8) are not drawn: sheds and outbuildings, not the city. */
+const MIN_BUILDING_HEIGHT = { desktop: 5, phone: 7 };
+/** The 3D map is announced ready at the latest this long after MapLibre's load event, even if some tiles are still arriving. */
+const READY_TIMEOUT_MS = 4000;
 
 /** Opening shot: low over the South Bank looking across the Thames at Westminster, like the intro photo. */
 const INTRO_CAMERA = { center: [-0.1197, 51.5003] as LngLat, zoom: 16.4, pitch: 70, bearing: -74 };
@@ -114,6 +117,7 @@ export default function LondonMap(props: Props) {
   onFailRef.current = onFail;
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
+  const announced = useRef(false);
 
   const coords = useMemo(() => new Map(stations.map((s) => [s.id, [s.lon, s.lat] as LngLat])), [stations]);
   // Desktop looks across the whole network from the south (Victoria nearest, King's Cross furthest, Paddington to the
@@ -142,6 +146,22 @@ export default function LondonMap(props: Props) {
   }, [coords]);
   const fitKey = fitIds.join(',');
 
+  /**
+   * Tell the app the 3D city is really ready: the map has rendered everything currently in view and gone idle, so it
+   * does not announce while buildings and roads are still popping in. A timeout keeps a slow tile from holding it up.
+   */
+  const announceWhenIdle = (map: MapLibreMap) => {
+    const fire = () => {
+      if (announced.current) return;
+      announced.current = true;
+      clearTimeout(timer);
+      performance.mark('stepfree:3d-ready');
+      onReadyRef.current?.();
+    };
+    const timer = setTimeout(fire, READY_TIMEOUT_MS);
+    map.once('idle', fire);
+  };
+
   // Create the map once. The style is fetched first: if that fails (offline, blocked), fall back at once
   // rather than showing an empty canvas. Individual tile errors later are tolerated.
   useEffect(() => {
@@ -150,9 +170,8 @@ export default function LondonMap(props: Props) {
     (async () => {
       let style: maplibregl.StyleSpecification;
       try {
-        const response = await fetch(STYLE_URL);
-        if (!response.ok) throw new Error(`Style request failed: ${response.status}`);
-        style = await response.json();
+        // Already requested (and pruned to what StepFree shows) while the intro photo played, so usually instant.
+        style = await loadStyle();
       } catch {
         if (!cancelled) onFailRef.current();
         return;
@@ -186,10 +205,13 @@ export default function LondonMap(props: Props) {
       created.keyboard.disableRotation();
       mapRef.current = created;
       created.on('load', () => {
+        performance.mark('stepfree:map-load');
         styleBasemap(created, staged ? 0.2 : 1, compact);
         addOverlays(created, edges, coords, staged, kRef.current);
         setReady(true);
-        onReadyRef.current?.();
+        // During the intro the first frame is the Westminster shot, so ready means that view has rendered. Without an
+        // intro the camera first moves to the framed view (see the camera effect), and ready means that view has rendered.
+        if (staged) announceWhenIdle(created);
       });
     })();
     return () => {
@@ -305,6 +327,7 @@ export default function LondonMap(props: Props) {
         { padding: mapPadding, bearing: view.bearing, pitch: view.pitch, maxZoom: 15, duration, easing },
       );
     }
+    if (first && !animated) announceWhenIdle(map);
     if (animated) {
       riseBuildings(map, 0.2, 1, 2200);
       for (const id of ['sf-glow', 'sf-network']) map.setPaintProperty(id, 'line-opacity', id === 'sf-glow' ? 0.75 : 0.95);
@@ -521,8 +544,8 @@ function styleBasemap(map: MapLibreMap, heightFactor: number, lowDetail: boolean
       source: 'openmaptiles',
       'source-layer': 'building',
       minzoom: 13,
-      // Phones skip the smallest outbuildings: far fewer shapes to draw, and nothing the route depends on.
-      ...(lowDetail ? { filter: ['>=', ['coalesce', ['get', 'render_height'], 8], 7] as maplibregl.FilterSpecification } : {}),
+      // Skip the smallest structures (phones skip more): far fewer shapes to draw, and the city still reads as 3D.
+      filter: ['>=', ['coalesce', ['get', 'render_height'], 8], lowDetail ? MIN_BUILDING_HEIGHT.phone : MIN_BUILDING_HEIGHT.desktop] as maplibregl.FilterSpecification,
       paint: {
         // Portland stone and London stock brick for most streets, cooler glass for taller towers.
         'fill-extrusion-color': [

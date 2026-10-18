@@ -6,6 +6,7 @@ import { TransitMap } from './map/TransitMap';
 import { Intro } from './components/Intro';
 import { INTRO } from './map/timeline';
 import { contentBounds, schematicPositions } from './map/layout';
+import { loadStyle } from './map/style';
 import { useMapFrame } from './map/useMapFrame';
 import { About } from './pages/About';
 import { InstallGuide } from './pages/InstallGuide';
@@ -21,6 +22,9 @@ function MapUnavailable({ onFail }: { onFail: () => void }) {
   useEffect(onFail, [onFail]);
   return <></>;
 }
+
+/** How long the 3D city takes to fade in over the schematic map. */
+const REVEAL_FADE_MS = 600;
 
 const FALLBACK_STATIONS = [{ id: 'VIC', lat: 51.4965, lon: -0.1447 }];
 
@@ -131,6 +135,26 @@ function MapHome({
   const userPoint = store.mode === 'live' && store.live.status === 'ready' ? store.live.userPoint : null;
   const userLocation = store.mode === 'live' && store.live.status === 'ready' ? store.live.location : null;
   const [map3d, setMap3d] = useState(true);
+  // The schematic map covers the gap if the 3D city is not ready by the time the intro photo leaves (or at once without
+  // an intro), then fades out as 3D comes in. While the photo is up it is not mounted at all, so the 3D map has the
+  // main thread to itself. If 3D never comes (offline, no WebGL), the schematic simply stays.
+  const [ready3d, setReady3d] = useState(false);
+  const [schematicLive, setSchematicLive] = useState(false);
+  const reduceMotion = useReducedMotion() ?? false;
+  useEffect(() => {
+    if (!map3d) return;
+    if (ready3d) {
+      const timer = setTimeout(() => setSchematicLive(false), reduceMotion ? 0 : REVEAL_FADE_MS + 100);
+      return () => clearTimeout(timer);
+    }
+    if (stage !== 'photo') setSchematicLive(true);
+  }, [map3d, ready3d, stage, reduceMotion]);
+  // Start fetching the 3D map's code and its style now (while the intro photo plays), so the map is built from a
+  // warm cache instead of waiting for them in sequence. Only the map page does this: About and Install never reach here.
+  useEffect(() => {
+    void import('./map/LondonMap');
+    loadStyle().catch(() => undefined);
+  }, []);
   const size = useElementSize(mapRef);
   const entrance = !introEnabled ? 'none' : stage === 'photo' ? 'hidden' : 'reveal';
   const padding = isDesktop
@@ -140,41 +164,15 @@ function MapHome({
   return (
     <main className="relative h-full">
       <div ref={mapRef} className="absolute inset-0">
-        {store.network && map3d && (
-          <>
-          <Suspense fallback={null}>
-            <LondonMap
-              stations={store.network.stations}
-              edges={store.network.edges}
-              route={store.route}
-              fadingRoute={store.fadingRoute}
-              outageStationIds={store.outageStationIds}
-              userLocation={userLocation}
-              journeyKey={store.journeyKey}
-              entrance={entrance}
-              compact={!isDesktop}
-              padding={padding}
-              viewport={size}
-              onFail={() => {
-                setMap3d(false);
-                onMapReady();
-              }}
-              onReady={onMapReady}
-            />
-          </Suspense>
-          <p className="pointer-events-none absolute bottom-3 right-3 z-10 hidden rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600 lg:block">
-            © OpenFreeMap © OpenMapTiles Data from OpenStreetMap
-          </p>
-          </>
-        )}
-        {store.network && !map3d && (
-          <>
-            {/* Offline or no WebGL: the schematic map, with the same routes and states. */}
+        {store.network && (!map3d || schematicLive) && (
+          <div className="absolute inset-0" aria-hidden={map3d || undefined}>
+            {/* The schematic map, with the same routes and states: shown until the 3D city is ready, and kept if 3D cannot load. */}
+            {/* As the fallback it plays the intro entrance; as the underlay it is drawn once, still, so it costs the 3D map nothing. */}
             <motion.div
               className="absolute inset-0"
               style={{ transformOrigin: '62% 40%' }}
-              initial={introEnabled ? { scale: 1.3, y: 28 } : false}
-              animate={stage === 'photo' ? { scale: 1.3, y: 28 } : { scale: 1, y: 0 }}
+              initial={introEnabled && !map3d ? { scale: 1.3, y: 28 } : false}
+              animate={stage === 'photo' && !map3d ? { scale: 1.3, y: 28 } : { scale: 1, y: 0 }}
               transition={{ duration: 2.4, ease: [0.22, 1, 0.36, 1] }}
             >
               <TransitMap
@@ -187,11 +185,49 @@ function MapHome({
                 outageStationIds={store.outageStationIds}
                 userPoint={userPoint}
                 journeyKey={store.journeyKey}
-                entrance={entrance}
+                entrance={map3d ? 'none' : entrance}
+                ambient={!map3d}
               />
             </motion.div>
+            {!map3d && (
+              <p className="pointer-events-none absolute bottom-3 right-3 z-10 hidden rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600 lg:block">
+                Map data © OpenStreetMap contributors
+              </p>
+            )}
+          </div>
+        )}
+        {store.network && map3d && (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{ opacity: ready3d ? 1 : 0, transition: reduceMotion ? 'none' : `opacity ${REVEAL_FADE_MS}ms ease-out`, pointerEvents: ready3d ? undefined : 'none' }}
+            >
+              <Suspense fallback={null}>
+                <LondonMap
+                  stations={store.network.stations}
+                  edges={store.network.edges}
+                  route={store.route}
+                  fadingRoute={store.fadingRoute}
+                  outageStationIds={store.outageStationIds}
+                  userLocation={userLocation}
+                  journeyKey={store.journeyKey}
+                  entrance={entrance}
+                  compact={!isDesktop}
+                  padding={padding}
+                  viewport={size}
+                  onFail={() => {
+                    setMap3d(false);
+                    onMapReady();
+                  }}
+                  onReady={() => {
+                    setReady3d(true);
+                    onMapReady();
+                  }}
+                />
+              </Suspense>
+            </div>
             <p className="pointer-events-none absolute bottom-3 right-3 z-10 hidden rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600 lg:block">
-              Map data © OpenStreetMap contributors
+              © OpenFreeMap © OpenMapTiles Data from OpenStreetMap
             </p>
           </>
         )}
