@@ -42,17 +42,17 @@ export function About() {
 
   return (
     <main className="h-full overflow-y-auto px-5 pb-12 pt-24">
-      <article className="mx-auto max-w-3xl rounded-3xl bg-white p-6 shadow-sm sm:p-10">
+      <article className="mx-auto max-w-3xl rounded-3xl bg-white p-6 shadow-sm sm:p-10 [&_strong]:font-semibold">
         <header>
           <p className="eyebrow">About StepFree</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">What StepFree is, and how it works</h1>
-          <p className="mt-4 text-xl font-semibold leading-snug text-teal-800">The shortest route isn’t useful if you can’t use it. StepFree finds the route you actually can.</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">What StepFree is, and how it works</h1>
+          <p className="mt-4 text-lg font-medium leading-snug text-teal-800 sm:text-xl">The shortest route isn’t useful if you can’t use it. StepFree finds the route you actually can.</p>
           <nav aria-label="On this page" className="mt-6 rounded-2xl bg-slate-50 p-4">
             <p className="eyebrow">On this page</p>
             <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
               {SECTIONS.map((s) => (
                 <li key={s.id}>
-                  <a href={`#/about`} onClick={jump(s.id)} className="inline-block min-h-8 text-base font-semibold text-teal-800 underline decoration-teal-800/30 underline-offset-4">
+                  <a href={`#/about`} onClick={jump(s.id)} className="inline-block min-h-8 text-base font-medium text-teal-800 underline decoration-teal-800/30 underline-offset-4">
                     {s.label}
                   </a>
                 </li>
@@ -72,7 +72,7 @@ export function About() {
             affected and, if it is, uses the connected transport network to find another route.
           </P>
           <P>It is for anyone for whom stairs or an inaccessible transfer can make a journey difficult or impossible, including:</P>
-          <ul className="list-disc space-y-1 pl-6 text-lg text-slate-700">
+          <ul className="max-w-prose list-disc space-y-1.5 pl-6 text-lg text-slate-700">
             <li>wheelchair users</li>
             <li>people with limited mobility</li>
             <li>people travelling with mobility aids</li>
@@ -85,7 +85,7 @@ export function About() {
             over stations, Underground lines, step-free transfers, lifts and what depends on what. FalkorDB is not a store added on the side: without it,
             StepFree has no route. It is responsible for:
           </P>
-          <ul className="list-disc space-y-1 pl-6 text-lg text-slate-700">
+          <ul className="max-w-prose list-disc space-y-1.5 pl-6 text-lg text-slate-700">
             <li>the connected journey representation</li>
             <li>weighted shortest-path routing</li>
             <li>the accessibility relationships between stations, lifts and transfers</li>
@@ -111,12 +111,12 @@ export function About() {
         </Section>
 
         <Section id="using" eyebrow="Guide" title="Using StepFree">
-          <h3 className="text-xl font-semibold text-slate-900">Demo Mode</h3>
+          <h3 className="text-xl font-medium text-slate-900">Demo Mode</h3>
           <P>
             Demo Mode works from anywhere. It needs no location permission and does not depend on anything happening in London right now. You can choose any
             supported From and To stations and plan a step-free journey. For each journey you can see:
           </P>
-          <ul className="list-disc space-y-1 pl-6 text-lg text-slate-700">
+          <ul className="max-w-prose list-disc space-y-1.5 pl-6 text-lg text-slate-700">
             <li>Route Health, which says whether the journey is currently usable</li>
             <li>a Plan B route, when another step-free route exists</li>
             <li>“Why this route?”, in plain words</li>
@@ -132,7 +132,7 @@ export function About() {
             journey a simulated event does not touch, the agent says so and keeps your route.
           </Callout>
 
-          <h3 className="mt-6 text-xl font-semibold text-slate-900">Live Mode</h3>
+          <h3 className="mt-8 text-xl font-medium text-slate-900">Live Mode</h3>
           <P>
             Live Mode is currently London-only. It asks for your browser’s location permission, then maps your position to the nearest supported station and plans
             from there. If you decline, Live Mode does not start and Demo Mode stays available. Only the nearest station is passed to the agent, not your
@@ -162,7 +162,7 @@ export function About() {
             fallback journey rides through it without anyone boarding, alighting or changing there. A few stations have platforms or directions without
             step-free access (for example, Liverpool Street’s Central line platforms), and those are never used for a journey.
           </P>
-          <h3 className="text-xl font-semibold text-slate-900">Where the data comes from</h3>
+          <h3 className="mt-8 text-xl font-medium text-slate-900">Where the data comes from</h3>
           <P>
             The supported network was built from official <ExternalLink href="https://tfl.gov.uk/info-for-open-data-users/">Transport for London</ExternalLink>{' '}
             data: detailed station topology, platform and direction information, step-free connections, lift topology, Underground route sequences, timetable
@@ -188,7 +188,7 @@ export function About() {
               'StepFree explains the result.',
             ].map((step, i) => (
               <li key={step} className="flex gap-3">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-bold text-teal-800">{i + 1}</span>
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-medium text-teal-800">{i + 1}</span>
                 <span>{step}</span>
               </li>
             ))}
@@ -198,9 +198,9 @@ export function About() {
             It never shows the model’s private reasoning.
           </P>
 
-          <h3 className="mt-6 text-xl font-semibold text-slate-900">Built with FalkorDB</h3>
+          <h3 className="mt-8 text-xl font-medium text-slate-900">Built with FalkorDB</h3>
           <P>This is what makes StepFree a graph problem rather than a list of routes:</P>
-          <ul className="list-disc space-y-1 pl-6 text-lg text-slate-700">
+          <ul className="max-w-prose list-disc space-y-1.5 pl-6 text-lg text-slate-700">
             <li>stations and their access points (street entrances and platforms) are graph nodes</li>
             <li>ride relationships and step-free-transfer relationships connect them</li>
             <li>travel-time weights let FalkorDB’s shortest-path algorithm find the quickest valid route</li>
@@ -210,16 +210,16 @@ export function About() {
           </ul>
           <P>The graph is why a closed lift can be traced to exactly the journeys it affects, and why the alternative comes from the network itself.</P>
 
-          <h3 className="mt-6 text-xl font-semibold text-slate-900">The agent and MCP</h3>
+          <h3 className="mt-8 text-xl font-medium text-slate-900">The agent and MCP</h3>
           <P>
             The agent does not write database queries. It chooses from a fixed set of validated StepFree tools exposed through the{' '}
             <ExternalLink href="https://modelcontextprotocol.io/">Model Context Protocol</ExternalLink> (MCP), and those tools perform controlled graph
             operations. Gemini never connects to FalkorDB directly:
           </P>
-          <p className="rounded-xl bg-slate-50 px-4 py-3 text-center text-base font-semibold text-slate-800">Gemini → StepFree agent host → MCP tools → FalkorDB / TfL</p>
+          <p className="rounded-xl bg-slate-50 px-4 py-3 text-center text-base font-medium text-slate-800">Gemini → StepFree agent host → MCP tools → FalkorDB / TfL</p>
           <P>Today the agent can plan step-free routes, inspect the accessibility dependencies of a route, check disruptions, reroute through the graph, find a Plan B, report Route Health, record its decisions and show a safe execution trace.</P>
 
-          <h3 className="mt-6 text-xl font-semibold text-slate-900">Other technology</h3>
+          <h3 className="mt-8 text-xl font-medium text-slate-900">Other technology</h3>
           <dl className="divide-y divide-slate-100 text-base text-slate-700">
             <Tech label="Frontend">React, TypeScript, Vite, Tailwind CSS, Framer Motion</Tech>
             <Tech label="Map">
@@ -242,7 +242,7 @@ export function About() {
           <P>
             This 17-station London network is a proof of concept. The longer-term idea is to grow it:
           </P>
-          <ul className="list-disc space-y-1 pl-6 text-lg text-slate-700">
+          <ul className="max-w-prose list-disc space-y-1.5 pl-6 text-lg text-slate-700">
             <li>across the full London transport network</li>
             <li>to more kinds of accessibility infrastructure</li>
             <li>with more live disruption feeds</li>
@@ -263,7 +263,7 @@ export function About() {
             StepFree started as a hackathon project, but the problem is bigger than the hackathon. A transport system can technically connect two places and still
             fail to give everyone a journey they can use. The goal is simple: help people understand the route they can actually use.
           </P>
-          <p className="text-xl font-semibold leading-snug text-teal-800">The shortest route isn’t useful if you can’t use it.</p>
+          <p className="text-xl font-medium leading-snug text-teal-800">The shortest route isn’t useful if you can’t use it.</p>
         </Section>
 
         <a href="#/" className="btn-primary mt-10 text-center">
@@ -276,10 +276,10 @@ export function About() {
 
 function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <section id={id} className="mt-10 scroll-mt-24 space-y-4 border-t border-slate-100 pt-8" aria-labelledby={`${id}-title`}>
+    <section id={id} className="mt-12 scroll-mt-24 space-y-4 border-t border-slate-100 pt-10" aria-labelledby={`${id}-title`}>
       <div>
         <p className="eyebrow">{eyebrow}</p>
-        <h2 id={`${id}-title`} className="text-2xl font-bold tracking-tight text-slate-900">
+        <h2 id={`${id}-title`} className="text-2xl font-semibold tracking-tight text-slate-900">
           {title}
         </h2>
       </div>
@@ -288,7 +288,7 @@ function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string
   );
 }
 
-const P = ({ children }: { children: ReactNode }) => <p className="max-w-prose text-lg leading-relaxed text-slate-700">{children}</p>;
+const P = ({ children }: { children: ReactNode }) => <p className="max-w-prose text-pretty text-lg leading-relaxed text-slate-700">{children}</p>;
 
 const Callout = ({ children }: { children: ReactNode }) => (
   <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-base leading-relaxed text-amber-950">{children}</p>
@@ -297,7 +297,7 @@ const Callout = ({ children }: { children: ReactNode }) => (
 function Tech({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid gap-1 py-2 sm:grid-cols-[9rem_1fr]">
-      <dt className="font-semibold text-slate-900">{label}</dt>
+      <dt className="font-medium text-slate-900">{label}</dt>
       <dd>{children}</dd>
     </div>
   );
@@ -305,7 +305,7 @@ function Tech({ label, children }: { label: string; children: ReactNode }) {
 
 function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-teal-800 underline decoration-teal-800/30 underline-offset-4">
+    <a href={href} target="_blank" rel="noreferrer" className="font-medium text-teal-800 underline decoration-teal-800/30 underline-offset-4">
       {children}
     </a>
   );
